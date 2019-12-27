@@ -18,7 +18,7 @@ Machine Learning Pearls
      :target: https://pyup.io/repos/github/ltiao/pearls/
      :alt: Updates
 
-Just as natural pearls grow from grains of sand that irritate oysters, ~~programming~~ machine learning pearls have grown from real problems that have irritated real ~~programmers~~ machine learners.
+Just as natural pearls grow from grains of sand that irritate oysters, *machine learning* pearls have grown from real problems that have irritated real *machine learners*.
 
 
 * Free software: MIT license
