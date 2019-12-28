@@ -23,3 +23,5 @@ WORKDIR /usr/src/app
 
 COPY . /usr/src/app
 RUN python -m pip install -e .
+
+CMD ["bash", "-c", "source /etc/bash.bashrc && jupyter notebook --ip 0.0.0.0 --no-browser --allow-root"]

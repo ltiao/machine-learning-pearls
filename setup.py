@@ -10,7 +10,17 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
-requirements = ['Click>=7.0', ]
+requirements = [
+    'Click>=7.0',
+    'tqdm>=4.41.0',
+    'numpy>=1.17.3',
+    'scipy>=1.4.1',
+    'scikit-learn>=0.22', 
+    'seaborn>=0.9.0',
+    'pandas>=0.25.3',
+    'networkx>=2.4',
+    'observations',
+]
 
 setup_requirements = ['pytest-runner', ]
 
@@ -31,7 +41,7 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
     ],
-    description="Just as natural pearls grow from grains of sand that irritate oysters, programming pearls have grown from real problems that have irritated real programmers.",
+    description="Just as natural pearls grow from grains of sand that irritate oysters, machine learning pearls have grown from real problems that have irritated real machine learners.",
     entry_points={
         'console_scripts': [
             'pearls=pearls.cli:main',
