@@ -1,5 +1,5 @@
 Welcome to Machine Learning Pearls's documentation!
-======================================
+===================================================
 
 .. toctree::
    :maxdepth: 2
@@ -12,6 +12,7 @@ Welcome to Machine Learning Pearls's documentation!
    contributing
    authors
    history
+   plotting
 
 Indices and tables
 ==================

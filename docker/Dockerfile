@@ -15,13 +15,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* ~/.cache/matplotlib
 
-COPY requirements_dev.txt .
-RUN python -m pip install --no-cache-dir -r requirements_dev.txt
+COPY requirements*.txt ./
+RUN python -m pip install --no-cache-dir -r requirements.txt -r requirements_dev.txt
 
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
 
 COPY . /usr/src/app
-RUN python -m pip install -e .
+RUN python -m pip install --no-deps -e .
 
 CMD ["bash", "-c", "source /etc/bash.bashrc && jupyter notebook --ip 0.0.0.0 --no-browser --allow-root"]

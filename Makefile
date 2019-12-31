@@ -84,7 +84,7 @@ dist: clean ## builds source and wheel package
 install: clean ## install the package to the active Python's site-packages
 	python setup.py install
 
-# TODO: Define constants explicitly
+# TODO: Define constants (tag name) explicitly somewhere
 docker-build: ## build docker image
 	docker build -t tiao/machine-learning-pearls -f docker/Dockerfile .
 

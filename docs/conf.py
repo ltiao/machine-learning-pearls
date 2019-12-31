@@ -95,7 +95,8 @@ html_theme = 'alabaster'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = []
+# html_static_path.append('_static')
 
 
 # -- Options for HTMLHelp output ---------------------------------------
@@ -159,5 +160,22 @@ texinfo_documents = [
      'Miscellaneous'),
 ]
 
+plot_pre_code = """
+# import matplotlib as mpl; mpl.use("pgf")
+import numpy as np
 
+import matplotlib.pyplot as plt
+import seaborn as sns
 
+golden_ratio = 0.5 * (1 + np.sqrt(5))
+golden_size = lambda width: (width, width / golden_ratio)
+
+width = 12
+
+plt.rc('figure', figsize=golden_size(width))
+plt.rc('font', family='serif')
+
+sns.set_style("ticks")
+sns.set_context("talk")
+sns.set_palette("colorblind")
+"""
