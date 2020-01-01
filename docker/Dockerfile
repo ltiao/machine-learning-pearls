@@ -1,4 +1,4 @@
-FROM tensorflow/tensorflow:1.15.0-py3-jupyter
+FROM tensorflow/tensorflow:1.13.2-py3-jupyter
 MAINTAINER Louis Tiao <louistiao@gmail.com>
 
 ENV LC_ALL C.UTF-8
@@ -16,7 +16,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/* ~/.cache/matplotlib
 
 COPY requirements*.txt ./
-RUN python -m pip install --no-cache-dir -r requirements.txt -r requirements_dev.txt
+RUN python -m pip install --no-cache-dir -r requirements_dev.txt && \
+	python -m pip install --no-cache-dir -r requirements.txt 
 
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
