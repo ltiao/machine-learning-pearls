@@ -5,6 +5,8 @@ Welcome to Machine Learning Pearls's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   gaussian_processes/prior
+   gaussian_processes/hyperparameters
    readme
    installation
    usage

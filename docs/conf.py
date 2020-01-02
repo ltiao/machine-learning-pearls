@@ -161,7 +161,7 @@ texinfo_documents = [
 ]
 
 plot_pre_code = """
-# import matplotlib as mpl; mpl.use("pgf")
+import matplotlib as mpl; mpl.use("pgf")
 import numpy as np
 
 import matplotlib.pyplot as plt
@@ -170,12 +170,13 @@ import seaborn as sns
 golden_ratio = 0.5 * (1 + np.sqrt(5))
 golden_size = lambda width: (width, width / golden_ratio)
 
-width = 12
+width = 10
 
 plt.rc('figure', figsize=golden_size(width))
 plt.rc('font', family='serif')
+plt.rc('text', usetex=True)
 
 sns.set_style("ticks")
 sns.set_context("talk")
-sns.set_palette("colorblind")
+sns.set_palette("husl")
 """

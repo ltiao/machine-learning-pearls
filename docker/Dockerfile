@@ -1,4 +1,4 @@
-FROM tensorflow/tensorflow:1.13.2-py3-jupyter
+FROM tensorflow/tensorflow:1.15.0-py3-jupyter
 MAINTAINER Louis Tiao <louistiao@gmail.com>
 
 ENV LC_ALL C.UTF-8
@@ -6,11 +6,13 @@ ENV LANG C.UTF-8
 
 RUN echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true | debconf-set-selections
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        # texlive-full \
-        # msttcorefonts \
         git-core \
-        graphviz \
+        texlive-latex-extra \
+        texlive-xetex \
+        msttcorefonts \
+        poppler-utils \
         ffmpeg \
+        graphviz \
         && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* ~/.cache/matplotlib
