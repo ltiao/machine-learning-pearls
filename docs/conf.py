@@ -172,11 +172,15 @@ golden_size = lambda width: (width, width / golden_ratio)
 
 width = 10
 
-plt.rc('figure', figsize=golden_size(width))
-plt.rc('font', family='serif')
-plt.rc('text', usetex=True)
+rc = {
+    "figure.figsize": golden_size(width),
+    "font.serif": ['Times New Roman'],
+    "text.usetex": True,
+}
 
-sns.set_style("ticks")
-sns.set_context("talk")
-sns.set_palette("husl")
+sns.set(context="notebook",
+        style="ticks",
+        palette="colorblind",
+        font="serif",
+        rc=rc)
 """

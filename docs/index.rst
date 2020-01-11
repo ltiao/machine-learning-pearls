@@ -7,6 +7,7 @@ Welcome to Machine Learning Pearls's documentation!
 
    gaussian_processes/prior
    gaussian_processes/hyperparameters
+   hyperparam_grid
    readme
    installation
    usage
