@@ -3,7 +3,7 @@ import numpy as np
 from pathlib import Path
 
 
-def load_zalando(base_dir="datasets/zalando"):
+def load_zalando(base_dir="datasets/zalando-phd-interview"):
 
     p = Path(base_dir)
 
