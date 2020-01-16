@@ -1,5 +1,8 @@
+# These should all be mounted at runtime rather than being included in the
+# build context
 notebooks/*
-experiments/*
+scripts/*
+datasets/*
 
 # Sphinx documentation
 docs/_build/*
