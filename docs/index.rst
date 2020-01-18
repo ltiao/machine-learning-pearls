@@ -16,6 +16,7 @@ Welcome to Machine Learning Pearls's documentation!
    authors
    history
    plotting
+   results
 
 Indices and tables
 ==================

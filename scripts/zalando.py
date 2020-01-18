@@ -8,6 +8,7 @@ from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import Dense, Dropout, BatchNormalization
 from tensorflow.keras.regularizers import l1_l2
 from tensorflow.keras.callbacks import CSVLogger, ModelCheckpoint, TensorBoard
+from tensorflow.keras.optimizers import Adam
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import StratifiedShuffleSplit, StratifiedKFold
@@ -67,41 +68,6 @@ SUMMARY_DIR = "logs/"
 # ]
 
 
-def maybe_load_model(checkpoint_dir, model_filename_fmt, resume_from_epoch,
-                     batch_norm, l1_factor, l2_factor, optimizer):
-    """
-    Attempt to load the specified model (including architecture, weights, and
-    even optimizer states). If this is not possible, build a new model from
-    scratch.
-    """
-    model_filename = model_filename_fmt.format(epoch=resume_from_epoch)
-    checkpoint_path = os.path.join(checkpoint_dir, model_filename)
-
-    if resume_from_epoch > 0 and os.path.isfile(checkpoint_path):
-
-        click.secho(f"Found model checkpoint '{checkpoint_path}'. "
-                    f"Resuming from epoch {resume_from_epoch}.", fg='green')
-
-        model = load_model(checkpoint_path)
-
-        initial_epoch = resume_from_epoch
-
-    else:
-
-        click.secho(f"Could not load model checkpoint '{checkpoint_path}' "
-                    "or `resume_from_epoch == 0`. Building new model.",
-                    fg='yellow')
-
-        model = build_model(output_dim=1, batch_norm=batch_norm,
-                            kernel_regularizer=l1_l2(l1_factor, l2_factor))
-        model.compile(loss='binary_crossentropy', optimizer=optimizer,
-                      metrics=['accuracy'])
-
-        initial_epoch = 0
-
-    return model, initial_epoch
-
-
 def build_model(output_dim, num_layers=2, num_units=64, activation="relu",
                 batch_norm=False, *args, **kwargs):
     """
@@ -122,8 +88,50 @@ def build_model(output_dim, num_layers=2, num_units=64, activation="relu",
     return model
 
 
-def build_callbacks(summary_dir, checkpoint_dir, basename, model_filename_fmt,
+def maybe_load_model(name, split_num, checkpoint_dir, resume_from_epoch,
+                     batch_norm, l1_factor, l2_factor, optimizer):
+    """
+    Attempt to load the specified model (including architecture, weights, and
+    even optimizer states). If this is not possible, build a new model from
+    scratch.
+    """
+    basename = get_basename(name, split_num)
+    model_filename_fmt = get_model_filename_fmt(basename)
+    model_filename = model_filename_fmt.format(epoch=resume_from_epoch)
+
+    checkpoint_path = os.path.join(checkpoint_dir, model_filename)
+
+    if resume_from_epoch > 0 and os.path.isfile(checkpoint_path):
+
+        click.secho(f"Found model checkpoint '{checkpoint_path}'. "
+                    f"Resuming from epoch {resume_from_epoch}.", fg='green')
+
+        model = load_model(checkpoint_path)
+
+        initial_epoch = resume_from_epoch
+
+    else:
+
+        click.secho(f"Could not load model checkpoint '{checkpoint_path}' "
+                    "or `resume_from_epoch == 0`. Building new model.",
+                    fg='yellow')
+
+        model = build_model(output_dim=1, batch_norm=batch_norm,
+                            kernel_regularizer=l1_l2(l1_factor, l2_factor))
+        # optimizer = Adam(beta_1=0.5)
+        model.compile(loss='binary_crossentropy', optimizer=optimizer,
+                      metrics=['accuracy'])
+
+        initial_epoch = 0
+
+    return model, initial_epoch
+
+
+def build_callbacks(name, split_num, summary_dir, checkpoint_dir,
                     checkpoint_period):
+
+    basename = get_basename(name, split_num)
+    model_filename_fmt = get_model_filename_fmt(basename)
 
     tensorboard_path = os.path.join(summary_dir, basename)
     csv_path = os.path.join(summary_dir, f"{basename}.csv")
@@ -137,6 +145,16 @@ def build_callbacks(summary_dir, checkpoint_dir, basename, model_filename_fmt,
     return callbacks
 
 
+def get_basename(name, split_num):
+
+    return f"{name}.split{split_num:d}"
+
+
+def get_model_filename_fmt(basename):
+
+    return f"{basename}.{{epoch:02d}}.h5"
+
+
 @click.command()
 @click.argument("name")
 @click.option("--optimizer", default=OPTIMIZER)
@@ -144,7 +162,7 @@ def build_callbacks(summary_dir, checkpoint_dir, basename, model_filename_fmt,
               help="Number of epochs.")
 @click.option("-b", "--batch-size", default=BATCH_SIZE, type=int,
               help="Batch size.")
-@click.option('--skip-fit', is_flag=True,
+@click.option('--evaluate-only', is_flag=True,
               help="Skip model fitting. Only evaluate model.")
 @click.option("--resume-from-epoch", default=RESUME_FROM_EPOCH, type=int,
               help="Epoch at which to resume a previous training run")
@@ -171,7 +189,7 @@ def build_callbacks(summary_dir, checkpoint_dir, basename, model_filename_fmt,
               type=click.Path(file_okay=False, dir_okay=True),
               help="Summary directory.")
 @click.option("-s", "--seed", default=SEED, type=int, help="Random seed")
-def main(name, optimizer, epochs, batch_size, skip_fit, resume_from_epoch,
+def main(name, optimizer, epochs, batch_size, evaluate_only, resume_from_epoch,
          l1_factor, l2_factor, batch_norm, standardize, split_method, n_splits,
          test_size, checkpoint_dir, checkpoint_period, summary_dir, seed):
 
@@ -179,10 +197,12 @@ def main(name, optimizer, epochs, batch_size, skip_fit, resume_from_epoch,
     X, y = load_zalando()
 
     if split_method == "kfold":
+
         splitter = StratifiedKFold(n_splits=n_splits,
                                    shuffle=True,
                                    random_state=seed)
     else:
+
         splitter = StratifiedShuffleSplit(n_splits=n_splits,
                                           test_size=test_size,
                                           random_state=seed)
@@ -199,20 +219,16 @@ def main(name, optimizer, epochs, batch_size, skip_fit, resume_from_epoch,
             X_test = scaler.transform(X_test)
 
         # Model specification
-        basename = f"{name}.split{split_num:d}"
-
-        model_filename_fmt = f"{basename}.{{epoch:02d}}.h5"
-        model, initial_epoch = maybe_load_model(checkpoint_dir,
-                                                model_filename_fmt,
+        model, initial_epoch = maybe_load_model(name, split_num, checkpoint_dir,
                                                 resume_from_epoch, batch_norm,
                                                 l1_factor, l2_factor,
                                                 optimizer)
 
         # Model fitting
-        if not skip_fit:
+        if not evaluate_only:
 
-            callbacks = build_callbacks(summary_dir, checkpoint_dir, basename,
-                                        model_filename_fmt, checkpoint_period)
+            callbacks = build_callbacks(name, split_num, summary_dir,
+                                        checkpoint_dir, checkpoint_period)
 
             hist = model.fit(X_train, y_train, batch_size=batch_size,
                              epochs=epochs, validation_data=(X_test, y_test),
