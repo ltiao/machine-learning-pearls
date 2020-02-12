@@ -1,5 +1,10 @@
 notebooks/*
-experiments/*
+scripts/*
+datasets/*
+checkpoints/*
+logs/*
+
+**/.git
 
 # Sphinx documentation
 docs/_build/*

@@ -1,6 +1,6 @@
-================
-Gaussian Process
-================
+=====
+Prior
+=====
 
 .. plot::
    :context: close-figs
@@ -83,9 +83,9 @@ Prior Samples
     with tf.Session() as sess:
         ax.plot(index_points, samples.eval().T)
 
-    ax.set_xlabel('$x$')
-    ax.set_ylabel('$f(x)$')
-    ax.set_title('Draws of $f(x)$ from GP prior')
+    ax.set_xlabel(r'$x$')
+    ax.set_ylabel(r'$f(x)$')
+    ax.set_title(r'Draws of $f(x)$ from GP prior')
 
     plt.show()
 

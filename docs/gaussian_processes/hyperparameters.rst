@@ -1,6 +1,6 @@
-================
-Gaussian Process
-================
+=====
+Hallo
+=====
 
 .. plot::
    :context: close-figs
@@ -35,8 +35,8 @@ Gaussian Process
 
     amplitude, length_scale = np.ogrid[0.05:0.16:0.05, 0.025:0.16:0.05]
 
-    kernel = kernels.ExponentiatedQuadratic(amplitude=amplitude, 
-                                            length_scale=length_scale)
+    kernel = kernels.MaternFiveHalves(amplitude=amplitude, 
+                                      length_scale=length_scale)
 
     gp = tfd.GaussianProcess(kernel=kernel, index_points=X_q)
     gp_samples = gp.sample(n_samples, seed=seed)

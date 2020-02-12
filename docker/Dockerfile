@@ -1,4 +1,4 @@
-FROM tensorflow/tensorflow:1.15.0-py3-jupyter
+FROM tensorflow/tensorflow:1.15.0-gpu-py3-jupyter
 MAINTAINER Louis Tiao <louistiao@gmail.com>
 
 ENV LC_ALL C.UTF-8
@@ -8,7 +8,10 @@ RUN echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula selec
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git-core \
         texlive-latex-extra \
+        texlive-fonts-recommended \
         texlive-xetex \
+        dvipng \
+        pandoc \
         msttcorefonts \
         poppler-utils \
         ffmpeg \
