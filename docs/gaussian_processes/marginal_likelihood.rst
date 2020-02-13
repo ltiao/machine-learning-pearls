@@ -16,7 +16,7 @@ Marginal Likelihood
     import pandas as pd
 
     from mpl_toolkits.mplot3d import Axes3D
-    from pearls.gaussian_processes import gp_sample_custom, dataframe_from_gp_samples
+    from etudes.gaussian_processes import gp_sample_custom, dataframe_from_gp_samples
 
     # shortcuts
     tfd = tfp.distributions

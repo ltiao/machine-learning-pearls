@@ -1,10 +1,10 @@
-Welcome to Machine Learning Pearls's documentation!
+Welcome to Machine Learning Études's documentation!
 ===================================================
 
 .. pull-quote::
 
-   Just as natural pearls grow from grains of sand that irritate oysters, 
-   *machine learning* pearls have grown from real problems that have irritated 
+   Just as natural etudes grow from grains of sand that irritate oysters, 
+   *machine learning* etudes have grown from real problems that have irritated 
    real *machine learners*.
 
 .. toctree::

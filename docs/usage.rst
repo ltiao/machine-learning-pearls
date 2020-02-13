@@ -2,6 +2,6 @@
 Usage
 =====
 
-To use Machine Learning Pearls in a project::
+To use Machine Learning Études in a project::
 
-    import pearls
+    import etudes

@@ -1,4 +1,4 @@
-* Machine Learning Pearls version:
+* Machine Learning Études version:
 * Python version:
 * Operating System:
 

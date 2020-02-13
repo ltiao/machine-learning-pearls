@@ -1,4 +1,4 @@
-"""Top-level package for Machine Learning Pearls."""
+"""Top-level package for Machine Learning Etudes."""
 
 __author__ = """Louis C. Tiao"""
 __email__ = 'louistiao@gmail.com'

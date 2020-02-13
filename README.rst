@@ -1,28 +1,28 @@
 =======================
-Machine Learning Pearls
+Machine Learning Études
 =======================
 
 
-.. image:: https://img.shields.io/pypi/v/pearls.svg
-        :target: https://pypi.python.org/pypi/pearls
+.. image:: https://img.shields.io/pypi/v/etudes.svg
+        :target: https://pypi.python.org/pypi/etudes
 
-.. image:: https://img.shields.io/travis/ltiao/pearls.svg
-        :target: https://travis-ci.org/ltiao/pearls
+.. image:: https://img.shields.io/travis/ltiao/etudes.svg
+        :target: https://travis-ci.org/ltiao/etudes
 
-.. image:: https://readthedocs.org/projects/pearls/badge/?version=latest
-        :target: https://pearls.readthedocs.io/en/latest/?badge=latest
+.. image:: https://readthedocs.org/projects/etudes/badge/?version=latest
+        :target: https://etudes.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
 
 
-.. image:: https://pyup.io/repos/github/ltiao/pearls/shield.svg
-     :target: https://pyup.io/repos/github/ltiao/pearls/
+.. image:: https://pyup.io/repos/github/ltiao/etudes/shield.svg
+     :target: https://pyup.io/repos/github/ltiao/etudes/
      :alt: Updates
 
-Just as natural pearls grow from grains of sand that irritate oysters, *machine learning* pearls have grown from real problems that have irritated real *machine learners*.
+Just as natural etudes grow from grains of sand that irritate oysters, *machine learning* etudes have grown from real problems that have irritated real *machine learners*.
 
 
 * Free software: MIT license
-* Documentation: https://pearls.readthedocs.io.
+* Documentation: https://etudes.readthedocs.io.
 
 
 Features

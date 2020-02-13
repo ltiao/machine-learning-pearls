@@ -1,1 +1,1 @@
-"""Unit test package for pearls."""
+"""Unit test package for etudes."""
