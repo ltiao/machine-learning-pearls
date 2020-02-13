@@ -18,12 +18,14 @@ Machine Learning Études
      :target: https://pyup.io/repos/github/ltiao/etudes/
      :alt: Updates
 
-Just as natural etudes grow from grains of sand that irritate oysters, *machine learning* etudes have grown from real problems that have irritated real *machine learners*.
+    An étude (a French word meaning study) is an instrumental musical composition, usually short, of considerable difficulty, and designed to provide practice material for perfecting a particular musical skill.
 
+Inspired by Peter Norvig's `pytudes <https://github.com/norvig/pytudes>`_, 
+which was in turn inspired by the book "Etudes for Programmers (1978)" by 
+Charles Wetherell.
 
 * Free software: MIT license
 * Documentation: https://etudes.readthedocs.io.
-
 
 Features
 --------
