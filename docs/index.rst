@@ -1,19 +1,25 @@
-Welcome to Machine Learning Études's documentation!
-===================================================
+Études for Machine Learning
+===========================
+
+A collection of scripts and notebooks to practice and spotlight probabilistic 
+machine learning methods through short and interesting examples in Python.
 
 .. pull-quote::
 
-   Just as natural etudes grow from grains of sand that irritate oysters, 
-   *machine learning* etudes have grown from real problems that have irritated 
-   real *machine learners*.
+   An *étude* (a French word meaning *study*) is an instrumental musical composition, usually short, of considerable difficulty, and designed to provide practice material for perfecting a particular musical skill.
+
+Inspired by Peter Norvig's pytudes_, which was in turn inspired by the book 
+"Etudes for Programmers (1978)" by Charles Wetherell.
+
+.. _pytudes: https://github.com/norvig/pytudes
 
 .. toctree::
    :glob:
    :maxdepth: 2
    :caption: Contents:
 
-   animate
    gaussian_processes/index
+   auto_examples/index
    readme
    installation
    usage
@@ -21,9 +27,4 @@ Welcome to Machine Learning Études's documentation!
    contributing
    authors
    history
-
-Indices and tables
-==================
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   animate

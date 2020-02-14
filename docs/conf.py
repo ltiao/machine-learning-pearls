@@ -36,6 +36,7 @@ import etudes
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.viewcode']
 extensions.append('matplotlib.sphinxext.plot_directive')
+extensions.append('sphinx_gallery.gen_gallery')
 extensions.append('nbsphinx')
 
 # Add any paths that contain templates here, relative to this directory.
@@ -51,7 +52,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'Machine Learning Études'
+project = 'Études for Machine Learning'
 copyright = "2019-{}, Louis Tiao".format(time.strftime("%Y"))
 author = "Louis C. Tiao"
 
@@ -76,6 +77,7 @@ language = None
 # This patterns also effect to html_static_path and html_extra_path
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 exclude_patterns.append('**.ipynb_checkpoints')
+exclude_patterns.append('gaussian_processes/**')
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
@@ -90,20 +92,24 @@ todo_include_todos = False
 # a list of builtin themes.
 #
 html_theme = 'bootstrap'
+html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
 
 # Theme options are theme-specific and customize the look and feel of a
 # theme further.  For a list of options available for each theme, see the
 # documentation.
 #
 html_theme_options = {
-    'bootswatch_theme': "paper"
+    "bootstrap_version": "3",
+    "bootswatch_theme": "paper",
+    "navbar_sidebarrel": False,
+    "source_link_position": "footer"
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = []
-# html_static_path.append('_static')
+html_static_path.append('_static')
 
 
 # -- Options for HTMLHelp output ---------------------------------------
@@ -166,6 +172,11 @@ texinfo_documents = [
      'One line description of project.',
      'Miscellaneous'),
 ]
+
+
+def setup(app):
+    app.add_stylesheet("custom.css")
+
 
 plot_pre_code = """
 import matplotlib as mpl; mpl.use("pgf")
