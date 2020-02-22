@@ -11,6 +11,5 @@ pandas>=1.0.0
 networkx>=2.4
 
 seaborn>=0.10.0
-observations
 
-tables
+tables>=3.6.1

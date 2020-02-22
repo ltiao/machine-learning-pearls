@@ -77,7 +77,7 @@ language = None
 # This patterns also effect to html_static_path and html_extra_path
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 exclude_patterns.append('**.ipynb_checkpoints')
-exclude_patterns.append('gaussian_processes/**')
+# exclude_patterns.append('gaussian_processes/**')
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
@@ -174,10 +174,17 @@ texinfo_documents = [
 ]
 
 
+# sphinx-bootstrap configuration
 def setup(app):
     app.add_stylesheet("custom.css")
 
 
+# nbsphinx configuration
+# nbsphinx_input_prompt = ''
+# nbsphinx_output_prompt = ''
+nbsphinx_timeout = -1
+
+# matplotlib plot directive configuration
 plot_pre_code = """
 import matplotlib as mpl; mpl.use("pgf")
 import numpy as np

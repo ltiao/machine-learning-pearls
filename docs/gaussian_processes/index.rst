@@ -11,3 +11,5 @@ Gaussian Processes
    matern_five_halves_grid
    posterior
    marginal_likelihood
+   gp_hyperparameter_fitting_empirical_bayes_animation
+   sparse_gaussian_process

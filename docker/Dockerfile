@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         pandoc \
         msttcorefonts \
         poppler-utils \
+        imagemagick \
         ffmpeg \
         graphviz \
         && \
@@ -21,7 +22,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/* ~/.cache/matplotlib
 
 COPY requirements*.txt ./
-RUN python -m pip install --no-cache-dir -r requirements_dev.txt && \
+RUN python -m pip install --upgrade pip==20.0.2 keyrings.alt==3.4.0 && \
+    python -m pip install --no-cache-dir -r requirements_dev.txt && \
 	python -m pip install --no-cache-dir -r requirements.txt 
 
 RUN mkdir -p /usr/src/app
