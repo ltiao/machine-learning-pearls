@@ -42,6 +42,8 @@ LOG_PERIOD = 1
 
 SEED = 42
 
+SHUFFLE_BUFFER_SIZE = 256
+
 
 def inducing_index_points_history_to_dataframe(inducing_index_points_history):
     # TODO: this will fail for `num_features > 1`
@@ -58,14 +60,19 @@ def variational_scale_history_to_dataframe(variational_scale_history,
 def save_results(history, name, learning_rate, beta1, beta2,
                  num_epochs, summary_dir, seed):
 
-    inducing_index_points_history_df = inducing_index_points_history_to_dataframe(history.pop("inducing_index_points"))
+    inducing_index_points_history_df = \
+        inducing_index_points_history_to_dataframe(history.pop("inducing_index_points"))
+
     variational_loc_history_df = pd.DataFrame(history.pop("variational_loc"))
-    variational_scale_history_df = variational_scale_history_to_dataframe(history.pop("variational_scale"), num_epochs)
+    variational_scale_history_df = \
+        variational_scale_history_to_dataframe(history.pop("variational_scale"),
+                                               num_epochs)
 
     history_df = pd.DataFrame(history).assign(name=name, seed=seed,
                                               learning_rate=learning_rate,
                                               beta1=beta1, beta2=beta2)
 
+    # TODO: add flexibility and de-clutter
     inducing_index_points_history_df.to_csv(os.path.join(summary_dir, f"{name}_inducing_index_points.csv"), index_label="epoch")
     variational_loc_history_df.to_csv(os.path.join(summary_dir, f"{name}_variational_loc.csv"), index_label="epoch")
     variational_scale_history_df.to_csv(os.path.join(summary_dir, f"{name}_variational_scale.csv"), index_label="epoch")
@@ -172,10 +179,8 @@ def main(name, num_train, num_features, num_query_points, num_inducing_points,
         observation_noise_variance=observation_noise_variance
     )
 
-    shuffle_buffer_size = 256
-
     dataset = tf.data.Dataset.from_tensor_slices((X_train, Y_train)) \
-                             .shuffle(buffer_size=shuffle_buffer_size) \
+                             .shuffle(buffer_size=SHUFFLE_BUFFER_SIZE) \
                              .batch(batch_size, drop_remainder=True)
     iterator = tf.data.make_initializable_iterator(dataset)
     X_batch, Y_batch = iterator.get_next()
@@ -186,16 +191,11 @@ def main(name, num_train, num_features, num_query_points, num_inducing_points,
 
     steps_per_epoch = num_train // batch_size
 
-    # global_step = tf.train.get_or_create_global_step()
-
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate,
                                        beta1=beta1, beta2=beta2)
     train_op = optimizer.minimize(nelbo)
-    # train_op = optimizer.minimize(nelbo, global_step=global_step)
 
     timestamp = tf.timestamp()
-
-    history = defaultdict(list)
 
     keys = ["nelbo", "amplitude", "length_scale", "observation_noise_variance",
             "inducing_index_points", "variational_loc", "variational_scale",
@@ -207,24 +207,7 @@ def main(name, num_train, num_features, num_query_points, num_inducing_points,
     fetches = [train_op]
     fetches.extend(tensors)
 
-    # tf.summary.scalar("loss/nelbo", nelbo)
-
-    # scaffold = tf.train.Scaffold(local_init_op=tf.group(
-    #     iterator.initializer, tf.local_variables_initializer()))
-
-    # logger = tf.estimator.LoggingTensorHook(
-    #     tensors=dict(epoch=global_step, nelbo=nelbo),
-    #     every_n_iter=log_period,
-    #     formatter=lambda values: "epoch={epoch:04d}, nelbo={nelbo:04f}".format(**values)
-    # )
-
-    # with tf.train.MonitoredTrainingSession(
-    #     scaffold=scaffold, hooks=[logger],
-    #     checkpoint_dir=os.path.join(checkpoint_dir, name),
-    #     summary_dir=os.path.join(summary_dir, name),
-    #     save_checkpoint_steps=checkpoint_period,
-    #     save_summaries_steps=summary_period
-    # ) as sess:
+    history = defaultdict(list)
 
     with tf.Session() as sess:
 
@@ -232,6 +215,7 @@ def main(name, num_train, num_features, num_query_points, num_inducing_points,
 
         for epoch in range(num_epochs):
 
+            # (re)initialize dataset iterator
             sess.run(iterator.initializer)
 
             for step in range(steps_per_epoch):
