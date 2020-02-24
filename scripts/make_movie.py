@@ -15,6 +15,8 @@ import seaborn as sns
 from matplotlib import animation
 from etudes.datasets import make_dataset, synthetic_sinusoidal
 
+tf.disable_v2_behavior()
+
 tfd = tfp.distributions
 kernels = tfp.math.psd_kernels
 

@@ -13,6 +13,8 @@ from collections import defaultdict
 
 from etudes.datasets import make_dataset, synthetic_sinusoidal
 
+tf.disable_v2_behavior()
+
 tfd = tfp.distributions
 kernels = tfp.math.psd_kernels
 
@@ -152,7 +154,7 @@ def main(name, num_train, num_features, num_query_points, num_inducing_points,
                                         name='inducing_index_points')
 
     # TODO: take care of this
-    foo = False
+    foo = True
 
     if foo:
         variational_loc = tf.Variable(np.zeros(num_inducing_points),
