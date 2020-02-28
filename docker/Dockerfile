@@ -25,20 +25,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* ~/.cache/matplotlib
 
+# TODO: copy to temporary dir rather than unknown current dir
 COPY requirements*.txt ./
 RUN python -m pip install --upgrade pip==20.0.2 keyrings.alt==3.4.0 && \
     python -m pip install --no-cache-dir -r requirements_dev.txt && \
 	python -m pip install --no-cache-dir -r requirements.txt 
 
-RUN mkdir -p /usr/src/app
-COPY . /usr/src/app
-
-WORKDIR /usr/src/app/probability
+# TODO: take care of temporary dir properly (not this /tmp/whtvr placeholder)
+COPY probability /tmp/whtvr/probability
+WORKDIR /tmp/whtvr/probability
 RUN bazel build --copt=-O3 --copt=-march=native :pip_pkg && \
     PKGDIR=$(mktemp -d) && \
     ./bazel-bin/pip_pkg $PKGDIR && \
     python -m pip install --upgrade $PKGDIR/*.whl
 
+RUN mkdir -p /usr/src/app
+
+COPY . /usr/src/app
 WORKDIR /usr/src/app
 RUN python -m pip install --no-deps -e .
 

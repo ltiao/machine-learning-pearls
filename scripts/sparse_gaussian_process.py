@@ -12,6 +12,7 @@ import tensorflow_probability as tfp
 from collections import defaultdict
 
 from etudes.datasets import make_dataset, synthetic_sinusoidal
+from pathlib import Path
 
 tf.disable_v2_behavior()
 
@@ -46,6 +47,8 @@ SEED = 42
 
 SHUFFLE_BUFFER_SIZE = 256
 
+jitter = 1e-6
+
 
 def inducing_index_points_history_to_dataframe(inducing_index_points_history):
     # TODO: this will fail for `num_features > 1`
@@ -74,11 +77,14 @@ def save_results(history, name, learning_rate, beta1, beta2,
                                               learning_rate=learning_rate,
                                               beta1=beta1, beta2=beta2)
 
+    output_dir = Path(summary_dir).joinpath(name)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     # TODO: add flexibility and de-clutter
-    inducing_index_points_history_df.to_csv(os.path.join(summary_dir, f"{name}_inducing_index_points.csv"), index_label="epoch")
-    variational_loc_history_df.to_csv(os.path.join(summary_dir, f"{name}_variational_loc.csv"), index_label="epoch")
-    variational_scale_history_df.to_csv(os.path.join(summary_dir, f"{name}_variational_scale.csv"), index_label="epoch")
-    history_df.to_csv(os.path.join(summary_dir, f"{name}.csv"), index_label="epoch")
+    inducing_index_points_history_df.to_csv(output_dir.joinpath(f"inducing_index_points.{seed:03d}.csv"), index_label="epoch")
+    variational_loc_history_df.to_csv(output_dir.joinpath(f"variational_loc.{seed:03d}.csv"), index_label="epoch")
+    variational_scale_history_df.to_csv(output_dir.joinpath(f"variational_scale.{seed:03d}.csv"), index_label="epoch")
+    history_df.to_csv(output_dir.joinpath(f"scalars.{seed:03d}.csv"), index_label="epoch")
 
 
 @click.command()
@@ -97,6 +103,8 @@ def save_results(history, name, learning_rate, beta1, beta2,
               help="Number of epochs")
 @click.option("-b", "--batch-size", default=BATCH_SIZE, type=int,
               help="Batch size")
+@click.option("--optimize-variational-posterior", is_flag=True,
+              help="Optimize variational posterior else compute analytically.")
 @click.option("--learning-rate", default=LEARNING_RATE,
               type=float, help="Learning rate")
 @click.option("--beta1", default=BETA1,
@@ -117,17 +125,16 @@ def save_results(history, name, learning_rate, beta1, beta2,
               help="Interval (number of epochs) between logging metrics")
 @click.option("-s", "--seed", default=SEED, type=int, help="Random seed")
 def main(name, num_train, num_features, num_query_points, num_inducing_points,
-         noise_variance, num_epochs, batch_size, learning_rate, beta1, beta2,
-         checkpoint_dir, checkpoint_period, summary_dir, summary_period,
-         log_period, seed):
+         noise_variance, num_epochs, batch_size, optimize_variational_posterior,
+         learning_rate, beta1, beta2, checkpoint_dir, checkpoint_period,
+         summary_dir, summary_period, log_period, seed):
 
     random_state = np.random.RandomState(seed)
 
     # Dataset (training index points)
     X_train, Y_train = make_dataset(synthetic_sinusoidal, num_train,
                                     num_features, noise_variance,
-                                    x_min=-0.5, x_max=0.5,
-                                    random_state=random_state)
+                                    x_min=-0.5, x_max=0.5)
 
     x_min, x_max = -1.0, 1.0
     # query index points
@@ -146,17 +153,26 @@ def main(name, num_train, num_features, num_query_points, num_inducing_points,
 
     kernel = kernel_cls(amplitude=amplitude, length_scale=length_scale)
 
+    # Option 1
     initial_inducing_index_points = random_state.choice(X_train.squeeze(),
                                                         num_inducing_points) \
                                                 .reshape(-1, num_features)
 
+    # Option 2
+    # initial_inducing_index_points = random_state.uniform(x_min, x_max,
+    #                                                      num_inducing_points) \
+    #                                             .reshape(-1, num_features)
+
     inducing_index_points = tf.Variable(initial_inducing_index_points,
                                         name='inducing_index_points')
 
-    # TODO: take care of this
-    foo = True
+    # Option 3
+    # initial_inducing_index_points = np.zeros(shape=(num_inducing_points, num_features))
+    # initial_inducing_index_points = np.cumsum(np.insert(0.15 * np.ones(num_inducing_points-1), 0, -1.2)).reshape(-1, num_features)
+    # inducing_index_points = tf.cumsum(tf.Variable(initial_inducing_index_points,
+    #                                               name='inducing_index_points'), axis=0)
 
-    if foo:
+    if optimize_variational_posterior:
         variational_loc = tf.Variable(np.zeros(num_inducing_points),
                                       name='variational_loc')
         variational_scale = tf.Variable(np.eye(num_inducing_points),
@@ -169,7 +185,8 @@ def main(name, num_train, num_features, num_query_points, num_inducing_points,
                 inducing_index_points=inducing_index_points,
                 observation_index_points=X_train,
                 observations=Y_train,
-                observation_noise_variance=observation_noise_variance
+                observation_noise_variance=observation_noise_variance,
+                jitter=jitter
             )
 
     vgp = tfd.VariationalGaussianProcess(
@@ -178,11 +195,12 @@ def main(name, num_train, num_features, num_query_points, num_inducing_points,
         inducing_index_points=inducing_index_points,
         variational_inducing_observations_loc=variational_loc,
         variational_inducing_observations_scale=variational_scale,
-        observation_noise_variance=observation_noise_variance
+        observation_noise_variance=observation_noise_variance,
+        jitter=jitter
     )
 
     dataset = tf.data.Dataset.from_tensor_slices((X_train, Y_train)) \
-                             .shuffle(buffer_size=SHUFFLE_BUFFER_SIZE) \
+                             .shuffle(seed=seed, buffer_size=SHUFFLE_BUFFER_SIZE) \
                              .batch(batch_size, drop_remainder=True)
     iterator = tf.data.make_initializable_iterator(dataset)
     X_batch, Y_batch = iterator.get_next()

@@ -12,4 +12,4 @@ Gaussian Processes
    posterior
    marginal_likelihood
    gp_hyperparameter_fitting_empirical_bayes_animation
-   sparse_gaussian_process
+   gaussian_process_regression_ard_boston_housing

@@ -4,6 +4,8 @@ import numpy as np
 
 from sklearn.utils import check_random_state
 
+SEED = 42
+
 
 def synthetic_sinusoidal(x):
 
@@ -11,7 +13,7 @@ def synthetic_sinusoidal(x):
 
 
 def make_dataset(latent_fn, n_train, n_features, noise_variance,
-                 x_min=0., x_max=1., squeeze=True, random_state=None):
+                 x_min=0., x_max=1., squeeze=True, random_state=SEED):
 
     rng = check_random_state(random_state)
 
