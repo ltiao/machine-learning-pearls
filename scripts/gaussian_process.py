@@ -10,7 +10,11 @@ import tensorflow.compat.v1 as tf
 import tensorflow_probability as tfp
 
 from collections import defaultdict
-from sklearn.utils import check_random_state
+from pathlib import Path
+
+from etudes.datasets import make_dataset, synthetic_sinusoidal
+
+tf.disable_v2_behavior()
 
 tfd = tfp.distributions
 kernels = tfp.math.psd_kernels
@@ -25,6 +29,8 @@ NUM_FEATURES = 1
 NOISE_VARIANCE = 1e-1
 NUM_EPOCHS = 1000
 
+JITTER = 1e-6
+
 LEARNING_RATE = 1e-2
 BETA1 = 0.5
 BETA2 = 0.99
@@ -35,28 +41,21 @@ SUMMARY_DIR = "logs/"
 SUMMARY_PERIOD = 5
 LOG_PERIOD = 1
 
-SEED = 42
+SEED = 8888
 
 
-def synthetic_sinusoidal(x):
+def save_results(history, name, seed, learning_rate, beta1, beta2, num_epochs,
+                 summary_dir):
 
-    return np.sin(12.0*x) + 0.66*np.cos(25.0*x)
+    history_df = pd.DataFrame(history).assign(name=name, seed=seed,
+                                              learning_rate=learning_rate,
+                                              beta1=beta1, beta2=beta2)
 
+    output_dir = Path(summary_dir).joinpath(name)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-def make_dataset(latent_fn, n_train, n_features, noise_variance,
-                 x_min=0., x_max=1., squeeze=True, random_state=None):
-
-    rng = check_random_state(random_state)
-
-    eps = noise_variance * rng.randn(n_train, n_features)
-
-    X = x_min + (x_max - x_min) * rng.rand(n_train, n_features)
-    Y = latent_fn(X) + eps
-
-    if squeeze:
-        Y = np.squeeze(Y)
-
-    return X, Y
+    history_df.to_csv(output_dir.joinpath(f"scalars.{seed:03d}.csv"),
+                      index_label="epoch")
 
 
 @click.command()
@@ -87,39 +86,39 @@ def make_dataset(latent_fn, n_train, n_features, noise_variance,
               help="Interval (number of epochs) between summary saves")
 @click.option("--log-period", default=LOG_PERIOD, type=int,
               help="Interval (number of epochs) between logging metrics")
+@click.option("--jitter", default=JITTER, type=float, help="Jitter")
 @click.option("-s", "--seed", default=SEED, type=int, help="Random seed")
 def main(name, num_train, num_features, noise_variance, num_epochs,
          learning_rate, beta1, beta2, checkpoint_dir, checkpoint_period,
-         summary_dir, summary_period, log_period, seed):
-
-    random_state = np.random.RandomState(seed)
+         summary_dir, summary_period, log_period, jitter, seed):
 
     # Dataset
     X_train, Y_train = make_dataset(synthetic_sinusoidal, num_train,
-                                    num_features, noise_variance,
-                                    random_state=random_state)
+                                    num_features, noise_variance)
 
+    # Model hyperparamters
     # TODO: allow specification of initial values
     ln_initial_amplitude = np.float64(0)
     ln_initial_length_scale = np.float64(-1)
     ln_initial_observation_noise_variance = np.float64(-5)
 
-    # Model
     amplitude = tf.exp(tf.Variable(ln_initial_amplitude), name='amplitude')
     length_scale = tf.exp(tf.Variable(ln_initial_length_scale), name='length_scale')
     observation_noise_variance = tf.exp(tf.Variable(ln_initial_observation_noise_variance,
                                                     name='observation_noise_variance'))
 
+    # Model
     kernel = kernel_cls(amplitude=amplitude, length_scale=length_scale)
     gp = tfd.GaussianProcess(
         kernel=kernel,
         index_points=X_train,
-        observation_noise_variance=observation_noise_variance
+        observation_noise_variance=observation_noise_variance,
+        jitter=jitter
     )
+    # Loss (negative log marginal likelihood)
     nll = - gp.log_prob(Y_train)
 
     global_step = tf.train.get_or_create_global_step()
-
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate,
                                        beta1=beta1, beta2=beta2)
     train_op = optimizer.minimize(nll, global_step=global_step)
@@ -127,18 +126,17 @@ def main(name, num_train, num_features, noise_variance, num_epochs,
     tf.summary.scalar("loss/nll", nll)
 
     logger = tf.estimator.LoggingTensorHook(
-        tensors=dict(epoch=global_step, nll=nll),
-        every_n_iter=log_period,
+        tensors=dict(epoch=global_step, nll=nll), every_n_iter=log_period,
         formatter=lambda values: "epoch={epoch:04d}, nll={nll:04f}".format(**values)
     )
-
-    history = defaultdict(list)
 
     keys = ["nll", "amplitude", "length_scale", "observation_noise_variance"]
     tensors = [nll, amplitude, length_scale, observation_noise_variance]
 
     fetches = [train_op]
     fetches.extend(tensors)
+
+    history = defaultdict(list)
 
     with tf.train.MonitoredTrainingSession(
         hooks=[logger],
@@ -156,10 +154,8 @@ def main(name, num_train, num_features, noise_variance, num_epochs,
 
                 history[key].append(value)
 
-    data = pd.DataFrame(history).assign(name=name, seed=seed,
-                                        learning_rate=learning_rate,
-                                        beta1=beta1, beta2=beta2)
-    data.to_csv(os.path.join(summary_dir, f"{name}.csv"), index_label="epoch")
+    save_results(history, name, seed, learning_rate, beta1, beta2, num_epochs,
+                 summary_dir)
 
     return 0
 

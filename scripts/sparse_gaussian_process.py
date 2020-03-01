@@ -10,9 +10,9 @@ import tensorflow.compat.v1 as tf
 import tensorflow_probability as tfp
 
 from collections import defaultdict
+from pathlib import Path
 
 from etudes.datasets import make_dataset, synthetic_sinusoidal
-from pathlib import Path
 
 tf.disable_v2_behavior()
 
@@ -29,6 +29,8 @@ NUM_FEATURES = 1
 NUM_INDUCING_POINTS = 16
 NUM_QUERY_POINTS = 256
 
+JITTER = 1e-6
+
 NOISE_VARIANCE = 1e-1
 NUM_EPOCHS = 1000
 BATCH_SIZE = 64
@@ -43,11 +45,9 @@ CHECKPOINT_PERIOD = 100
 SUMMARY_PERIOD = 5
 LOG_PERIOD = 1
 
-SEED = 42
+SEED = 8888
 
 SHUFFLE_BUFFER_SIZE = 256
-
-jitter = 1e-6
 
 
 def inducing_index_points_history_to_dataframe(inducing_index_points_history):
@@ -123,11 +123,12 @@ def save_results(history, name, learning_rate, beta1, beta2,
               help="Interval (number of epochs) between summary saves")
 @click.option("--log-period", default=LOG_PERIOD, type=int,
               help="Interval (number of epochs) between logging metrics")
+@click.option("--jitter", default=JITTER, type=float, help="Jitter")
 @click.option("-s", "--seed", default=SEED, type=int, help="Random seed")
 def main(name, num_train, num_features, num_query_points, num_inducing_points,
          noise_variance, num_epochs, batch_size, optimize_variational_posterior,
          learning_rate, beta1, beta2, checkpoint_dir, checkpoint_period,
-         summary_dir, summary_period, log_period, seed):
+         summary_dir, summary_period, log_period, jitter, seed):
 
     random_state = np.random.RandomState(seed)
 
