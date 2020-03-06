@@ -38,6 +38,7 @@ extensions = ['sphinx.ext.autodoc', 'sphinx.ext.viewcode']
 extensions.append('matplotlib.sphinxext.plot_directive')
 extensions.append('sphinx_gallery.gen_gallery')
 extensions.append('nbsphinx')
+extensions.append('numpydoc')
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -77,7 +78,9 @@ language = None
 # This patterns also effect to html_static_path and html_extra_path
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 exclude_patterns.append('**.ipynb_checkpoints')
-# exclude_patterns.append('gaussian_processes/**')
+exclude_patterns.append('**.ipynb')
+exclude_patterns.append('gaussian_processes/**')
+
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
@@ -174,6 +177,37 @@ texinfo_documents = [
 ]
 
 
+def reset_mpl(gallery_conf, fname):
+
+    import numpy as np
+    import seaborn as sns
+
+    golden_ratio = 0.5 * (1 + np.sqrt(5))
+
+    def golden_size(width):
+        return (width, width / golden_ratio)
+
+    width = 10.0
+
+    rc = {
+        "figure.figsize": golden_size(width),
+        "font.serif": ['Times New Roman'],
+        "text.usetex": True,
+    }
+
+    sns.set(context="talk",
+            style="ticks",
+            palette="colorblind",
+            font="serif",
+            rc=rc)
+
+
+sphinx_gallery_conf = {
+    "remove_config_comments": True,
+    'reset_modules': (reset_mpl, 'seaborn')
+}
+
+
 # sphinx-bootstrap configuration
 def setup(app):
     app.add_stylesheet("custom.css")
@@ -185,6 +219,7 @@ def setup(app):
 nbsphinx_timeout = -1
 
 # matplotlib plot directive configuration
+plot_include_source = True
 plot_pre_code = """
 import matplotlib as mpl; mpl.use("pgf")
 import numpy as np

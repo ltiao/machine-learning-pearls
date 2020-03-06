@@ -1,5 +1,6 @@
 notebooks/*
 scripts/*
+examples/*
 datasets/*
 checkpoints/*
 logs/*
