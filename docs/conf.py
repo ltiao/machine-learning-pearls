@@ -195,7 +195,7 @@ def reset_mpl(gallery_conf, fname):
         "text.usetex": True,
     }
 
-    sns.set(context="talk",
+    sns.set(context="notebook",
             style="ticks",
             palette="colorblind",
             font="serif",

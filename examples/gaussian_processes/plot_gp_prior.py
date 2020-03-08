@@ -34,6 +34,8 @@ random_state = np.random.RandomState(seed)
 # %%
 # Kernel profile
 # --------------
+# The exponentiated quadratic kernel is *stationary*.
+# That is, :math:`k(x, x') = k(x, 0)` for all :math:`x, x'`.
 
 fig, ax = plt.subplots()
 
