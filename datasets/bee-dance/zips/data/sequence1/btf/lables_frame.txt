@@ -1,20 +1,3 @@
-1-26		right  1 
-27-96		waggle 1
-97-130		left   1
-131-218		right  2
-219-273		left   1
-274-327		waggle 2
-328-389		left   2
-390-426		waggle 3
-427-479		right  3
-480-545		waggle 4
-546-604		left   3
-605-651		waggle 5
-652-710		right  4
-711-771		waggle 6
-772-829		left   4
-830-892		waggle 7
-893-945		left   5
-946-974		waggle 8
-975-1030	right  5
-1031-1058	waggle 9
+version https://git-lfs.github.com/spec/v1
+oid sha256:9b5fd37c0c451b065308172af0412a77f990e3623b0dcdbca1459641e4fa3743
+size 374
