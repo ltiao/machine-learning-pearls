@@ -50,8 +50,8 @@ def make_dataset(latent_fn, num_train, num_features, noise_variance,
 
         ax.legend()
 
-        ax.set_xlabel('$x$')
-        ax.set_ylabel('$y$')
+        ax.set_xlabel(r'$x$')
+        ax.set_ylabel(r'$y$')
 
         plt.show()
     """
@@ -145,8 +145,58 @@ def binary_mnist_load_data():
     return tf.keras.datasets.mnist.load_data()
 
 
-def mauna_loa_load_dataframe(base_dir="datasets/"):
+def coal_mining_disasters_load_data(base_dir="../datasets/"):
+    """
+    Coal mining disasters dataset.
 
+    Examples
+    --------
+
+    .. plot::
+        :context: close-figs
+
+        from etudes.datasets import coal_mining_disasters_load_data
+
+        X, y = coal_mining_disasters_load_data()
+
+        fig, ax = plt.subplots()
+
+        ax.vlines(X.squeeze(), ymin=0, ymax=y, linewidth=0.5, alpha=0.8)
+
+        ax.set_xlabel("days")
+        ax.set_ylabel("incidents")
+
+        plt.show()
+    """
+    base = Path(base_dir).joinpath("coal-mining-disasters")
+
+    data = pd.read_csv(base / "data.csv", names=["count", "days"], header=None)
+
+    X = np.expand_dims(data["days"].values, axis=-1)
+    y = data["count"].values
+
+    return X, y
+
+
+def mauna_loa_load_dataframe(base_dir="../datasets/"):
+    """
+    Mauna Loa dataset.
+
+    Examples
+    --------
+
+    .. plot::
+        :context: close-figs
+
+        import seaborn as sns
+        from etudes.datasets import mauna_loa_load_dataframe
+
+        data = mauna_loa_load_dataframe()
+
+        g = sns.relplot(x='date', y='average', kind="line",
+                        data=data, height=5, aspect=1.5, alpha=0.8)
+        g.set_ylabels(r"average $\mathrm{CO}_2$ (ppm)")
+    """
     base = Path(base_dir).joinpath("mauna-loa-co2")
 
     column_names = ["year", "month", "date", "average", "interpolated",
