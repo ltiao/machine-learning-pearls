@@ -8,7 +8,9 @@ Squared Exponential Kernel
 
     import numpy as np
 
-    import tensorflow as tf
+    import tensorflow.compat.v1 as tf
+    tf.disable_v2_behavior()
+
     import tensorflow_probability as tfp
 
     import matplotlib.pyplot as plt
@@ -112,31 +114,3 @@ Synthetic Dataset
 
 GP Regression Posterior Predictive
 ==================================
-
-.. plot::
-   :context: close-figs
-   :include-source:
-
-    gprm = tfd.GaussianProcessRegressionModel(
-        kernel=kernel, index_points=X_q, observation_index_points=X, observations=Y,
-        observation_noise_variance=0.0, jitter=jitter
-    )
-
-    gp_samples = gp_sample_custom(gprm, n_samples, seed=seed)
-
-    with tf.Session() as sess:
-        gp_samples_arr = sess.run(gp_samples)
-
-    data = dataframe_from_gp_samples(gp_samples_arr, X_q, amplitude, 
-                                     length_scale, n_samples)
-
-.. plot::
-   :context: close-figs
-   :include-source:
-
-    g = sns.relplot(x="index_point", y="function_value", hue="sample",
-                    row="amplitude", col="length_scale", height=5.0, aspect=1.0,
-                    kind="line", data=data, alpha=0.7, linewidth=3.0)
-    g.set_titles(row_template=r"amplitude $\sigma={{{row_name:.2f}}}$",
-                 col_template=r"lengthscale $\ell={{{col_name:.3f}}}$")
-    g.set_axis_labels(r"$x$", r"$f^{(i)}(x)$")

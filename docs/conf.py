@@ -78,8 +78,8 @@ language = None
 # This patterns also effect to html_static_path and html_extra_path
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 exclude_patterns.append('**.ipynb_checkpoints')
-exclude_patterns.append('**.ipynb')
-exclude_patterns.append('gaussian_processes/**')
+# exclude_patterns.append('**.ipynb')
+# exclude_patterns.append('gaussian_processes/**')
 
 
 # The name of the Pygments (syntax highlighting) style to use.
@@ -204,7 +204,10 @@ def reset_mpl(gallery_conf, fname):
 
 sphinx_gallery_conf = {
     "remove_config_comments": True,
-    'reset_modules': (reset_mpl, 'seaborn')
+    "reset_modules": (reset_mpl, "seaborn"),
+    "reference_url": {
+        "sphinx_gallery": None,
+    }
 }
 
 

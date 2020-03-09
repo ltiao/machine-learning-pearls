@@ -6,10 +6,6 @@ Gaussian Processes
    :maxdepth: 2
    :caption: Contents:
 
-   prior
    squared_exponential_grid
    matern_five_halves_grid
-   posterior
-   marginal_likelihood
    gp_hyperparameter_fitting_empirical_bayes_animation
-   gaussian_process_regression_ard_boston_housing

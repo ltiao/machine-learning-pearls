@@ -1,4 +1,4 @@
-Gallery
-=======
+Collection
+==========
 
 Here be examples.
