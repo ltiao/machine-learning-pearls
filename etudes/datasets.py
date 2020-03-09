@@ -1,9 +1,12 @@
 """Datasets module."""
 
 import numpy as np
+import pandas as pd
+
 import tensorflow as tf
 
 from sklearn.utils import check_random_state
+from pathlib import Path
 
 SEED = 42
 
@@ -140,3 +143,17 @@ def binarize(positive_label=3, negative_label=5):
 @binarize(positive_label=2, negative_label=7)
 def binary_mnist_load_data():
     return tf.keras.datasets.mnist.load_data()
+
+
+def mauna_loa_load_dataframe(base_dir="datasets/"):
+
+    base = Path(base_dir).joinpath("mauna-loa-co2")
+
+    column_names = ["year", "month", "date", "average", "interpolated",
+                    "trend", "num_days"]
+
+    data = pd.read_csv(base / "co2_mm_mlo.txt", names=column_names,
+                       comment="#", header=None, sep=r"\s+")
+    data = data[data.average > 0]
+
+    return data
