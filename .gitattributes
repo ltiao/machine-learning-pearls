@@ -1,0 +1,4 @@
+datasets/bee-dance filter=lfs diff=lfs merge=lfs -text
+datasets/coal-mining-disasters filter=lfs diff=lfs merge=lfs -text
+datasets/well-log filter=lfs diff=lfs merge=lfs -text
+datasets/mauna-loa-co2 filter=lfs diff=lfs merge=lfs -text

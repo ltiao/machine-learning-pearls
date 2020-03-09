@@ -34,21 +34,25 @@ kernels = tfp.math.psd_kernels
 
 # environment
 golden_ratio = 0.5 * (1 + np.sqrt(5))
-golden_size = lambda width: (width, width / golden_ratio)
 
-width = 10
+
+def golden_size(width):
+    return (width, width / golden_ratio)
+
+
+width = 10.0
 
 rc = {
     "figure.figsize": golden_size(width),
+    "font.serif": ['Times New Roman'],
     "text.usetex": False,
 }
 
-sns.set(
-    context="paper",
-    style="ticks",
-    palette="colorblind",
-    font="serif", rc=rc
-)
+sns.set(context="notebook",
+        style="ticks",
+        palette="colorblind",
+        font="serif",
+        rc=rc)
 
 # %%
 

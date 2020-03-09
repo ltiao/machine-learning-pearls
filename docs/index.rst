@@ -14,9 +14,8 @@ Inspired by Peter Norvig's pytudes_, which was in turn inspired by the book
 .. _pytudes: https://github.com/norvig/pytudes
 
 .. toctree::
-   :glob:
+   :hidden:
    :maxdepth: 2
-   :caption: Contents:
 
    auto_examples/index
    gaussian_processes_old/index

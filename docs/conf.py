@@ -104,6 +104,10 @@ html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
 html_theme_options = {
     "bootstrap_version": "3",
     "bootswatch_theme": "paper",
+    'navbar_links': [
+        ("Louis Tiao", "https://tiao.io", True),
+        ("Collection", "auto_examples/index")
+    ],
     "navbar_sidebarrel": False,
     "source_link_position": "footer"
 }
