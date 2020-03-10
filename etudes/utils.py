@@ -1,6 +1,12 @@
+import tensorflow as tf
 import pandas as pd
 
 from pathlib import Path
+
+
+def to_numpy(transformed_variable):
+
+    return tf.convert_to_tensor(transformed_variable).numpy()
 
 
 def preprocess(df):

@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from mpl_toolkits.mplot3d import Axes3D
-from etudes.datasets import synthetic_sinusoidal, make_dataset
+from etudes.datasets import synthetic_sinusoidal, make_regression_dataset
 from etudes.gaussian_processes import (gp_sample_custom,
                                        dataframe_from_gp_samples,
                                        dataframe_from_gp_summary)
@@ -45,11 +45,12 @@ golden_ratio = 0.5 * (1 + np.sqrt(5))
 
 X_pred = np.linspace(-1.0, 1.0, num_index_points).reshape(-1, num_features)
 
-X_train, Y_train = make_dataset(synthetic_sinusoidal,
-                                num_train, num_features,
-                                observation_noise_variance,
-                                x_min=-0.5, x_max=0.5,
-                                random_state=random_state)
+load_data = make_regression_dataset(synthetic_sinusoidal)
+X_train, Y_train = load_data(num_train, num_features,
+                             observation_noise_variance,
+                             x_min=-0.5, x_max=0.5,
+                             random_state=random_state)
+
 # %%
 # Synthetic dataset
 # -----------------

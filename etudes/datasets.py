@@ -4,11 +4,14 @@ import numpy as np
 import pandas as pd
 
 import tensorflow as tf
+import tensorflow_probability as tfp
 
 from sklearn.utils import check_random_state
 from pathlib import Path
 
 SEED = 42
+
+tfd = tfp.distributions
 
 
 def synthetic_sinusoidal(x):
@@ -16,8 +19,7 @@ def synthetic_sinusoidal(x):
     return np.sin(12.0*x) + 0.66*np.cos(25.0*x)
 
 
-def make_dataset(latent_fn, num_train, num_features, noise_variance,
-                 x_min=0., x_max=1., squeeze=True, random_state=SEED):
+def make_regression_dataset(latent_fn=synthetic_sinusoidal):
     """
     Make synthetic dataset.
 
@@ -29,7 +31,7 @@ def make_dataset(latent_fn, num_train, num_features, noise_variance,
     .. plot::
         :context: close-figs
 
-        from etudes.datasets import synthetic_sinusoidal, make_dataset
+        from etudes.datasets import synthetic_sinusoidal, make_regression_dataset
 
         num_train = 64 # nbr training points in synthetic dataset
         num_index_points = 256
@@ -38,9 +40,11 @@ def make_dataset(latent_fn, num_train, num_features, noise_variance,
 
         f = synthetic_sinusoidal
         X_pred = np.linspace(-0.6, 0.6, num_index_points).reshape(-1, num_features)
-        X_train, Y_train = make_dataset(f, num_train, num_features,
-                                        observation_noise_variance,
-                                        x_min=-0.5, x_max=0.5)
+
+        load_data = make_regression_dataset(f)
+        X_train, Y_train = load_data(num_train, num_features,
+                                     observation_noise_variance,
+                                     x_min=-0.5, x_max=0.5)
 
         fig, ax = plt.subplots()
 
@@ -55,17 +59,50 @@ def make_dataset(latent_fn, num_train, num_features, noise_variance,
 
         plt.show()
     """
-    rng = check_random_state(random_state)
 
-    eps = noise_variance * rng.randn(num_train, num_features)
+    def load_data(num_samples, num_features, noise_variance,
+                  x_min=0., x_max=1., squeeze=True, random_state=SEED):
 
-    X = x_min + (x_max - x_min) * rng.rand(num_train, num_features)
-    Y = latent_fn(X) + eps
+        rng = check_random_state(random_state)
 
-    if squeeze:
-        Y = np.squeeze(Y)
+        eps = noise_variance * rng.randn(num_samples, num_features)
 
-    return X, Y
+        X = x_min + (x_max - x_min) * rng.rand(num_samples, num_features)
+        Y = latent_fn(X) + eps
+
+        if squeeze:
+            Y = np.squeeze(Y)
+
+        return X, Y
+
+    return load_data
+
+
+def make_classification_dataset(p=None, q=None):
+
+    if p is None:
+        p = tfd.MixtureSameFamily(
+            mixture_distribution=tfd.Categorical(probs=[0.3, 0.7]),
+            components_distribution=tfd.Normal(loc=[2.0, -3.0],
+                                               scale=[1.0, 0.5]))
+
+    if q is None:
+        q = tfd.Normal(loc=0.0, scale=2.0)
+
+    def load_data(num_samples, rate=0.5, dtype="float64", seed=SEED):
+
+        num_p = int(num_samples * rate)
+        num_q = num_samples - num_p
+
+        X_p = p.sample(sample_shape=(num_p, 1), seed=seed).numpy()
+        X_q = q.sample(sample_shape=(num_q, 1), seed=seed).numpy()
+
+        X = np.vstack([X_p, X_q]).astype(dtype)
+        y = np.hstack([np.ones(num_p), np.zeros(num_q)]).astype(dtype)
+
+        return X, y
+
+    return load_data
 
 
 def binarize(positive_label=3, negative_label=5):
@@ -143,6 +180,62 @@ def binarize(positive_label=3, negative_label=5):
 @binarize(positive_label=2, negative_label=7)
 def binary_mnist_load_data():
     return tf.keras.datasets.mnist.load_data()
+
+
+def get_sequence_path(sequence_num, base_dir="../datasets"):
+
+    return Path(base_dir).joinpath("bee-dance", "zips", "data",
+                                   f"sequence{sequence_num:d}", "btf")
+
+
+bee_dance_filenames = dict(
+    x="ximage.btf",
+    y="yimage.btf",
+    t="timage.btf",
+    label="label0.btf",
+    timestamp="timestamp.btf"
+)
+
+
+def read_sequence_column(sequence_num, col_name, base_dir="../datasets"):
+
+    sequence_path = get_sequence_path(sequence_num, base_dir=base_dir)
+
+    return pd.read_csv(sequence_path / bee_dance_filenames[col_name],
+                       names=[col_name], header=None)
+
+
+def read_sequence(sequence_num, base_dir="../datasets"):
+
+    left = None
+
+    for col_name in bee_dance_filenames:
+
+        right = read_sequence_column(sequence_num, col_name, base_dir=base_dir)
+
+        if left is None:
+            left = right
+        else:
+            left = pd.merge(left, right, left_index=True, right_index=True)
+
+    change_point = left.label != left.label.shift()
+    phase = change_point.cumsum()
+
+    return left.assign(change_point=change_point, phase=phase)
+
+
+def load_bee_dance_dataframe(base_dir="../datasets"):
+
+    sequences = []
+
+    for i in range(6):
+
+        sequence_num = i + 1
+        sequence = read_sequence(sequence_num, base_dir=base_dir) \
+            .assign(sequence=sequence_num)
+        sequences.append(sequence)
+
+    return pd.concat(sequences, axis="index")
 
 
 def coal_mining_disasters_load_data(base_dir="../datasets/"):
