@@ -17,9 +17,8 @@ import seaborn as sns
 
 from mpl_toolkits.mplot3d import Axes3D
 from etudes.datasets import synthetic_sinusoidal, make_regression_dataset
-from etudes.gaussian_processes import (gp_sample_custom,
-                                       dataframe_from_gp_samples,
-                                       dataframe_from_gp_summary)
+from etudes.plotting import fill_between_stddev
+from etudes.gaussian_processes import dataframe_from_gp_summary
 
 # %%
 
@@ -125,16 +124,6 @@ plt.show()
 # %%
 # Posterior predictive distributions
 # ----------------------------------
-
-
-def fill_between_stddev(X_pred, mean_pred, stddev_pred, n=1, ax=None, **kwargs):
-
-    if ax is None:
-        ax = plt.gca()
-
-    ax.fill_between(X_pred,
-                    mean_pred - n * stddev_pred,
-                    mean_pred + n * stddev_pred, **kwargs)
 
 
 def scatterplot(X, Y, ax=None, *args, **kwargs):

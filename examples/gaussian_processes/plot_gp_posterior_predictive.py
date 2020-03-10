@@ -17,9 +17,7 @@ import seaborn as sns
 
 from mpl_toolkits.mplot3d import Axes3D
 from etudes.datasets import synthetic_sinusoidal, make_regression_dataset
-from etudes.gaussian_processes import (gp_sample_custom,
-                                       dataframe_from_gp_samples,
-                                       dataframe_from_gp_summary)
+from etudes.plotting import fill_between_stddev
 
 # %%
 
@@ -33,6 +31,9 @@ num_features = 1  # dimensionality
 num_index_points = 256  # nbr of index points
 num_samples = 7
 
+amplitude = 1.0
+length_scale = 0.1
+
 observation_noise_variance = 1e-1
 jitter = 1e-6
 
@@ -41,9 +42,8 @@ kernel_cls = kernels.ExponentiatedQuadratic
 seed = 42  # set random seed for reproducibility
 random_state = np.random.RandomState(seed)
 
-golden_ratio = 0.5 * (1 + np.sqrt(5))
-
-X_pred = np.linspace(-1.0, 1.0, num_index_points).reshape(-1, num_features)
+x_min, x_max = -1.0, 1.0
+X_pred = np.linspace(x_min, x_max, num_index_points).reshape(-1, num_features)
 
 load_data = make_regression_dataset(synthetic_sinusoidal)
 X_train, Y_train = load_data(num_train, num_features,
@@ -73,17 +73,15 @@ plt.show()
 # Schur Complement kernel matrix
 # ------------------------------
 
-base_kernel = kernel_cls()
-kernel = kernels.SchurComplement(
-    base_kernel, X_train,
-    diag_shift=observation_noise_variance
-)
+kernel = kernel_cls(amplitude=np.float64(amplitude),
+                    length_scale=np.float64(length_scale))
+schur_complement_kernel = kernels.SchurComplement(
+    kernel, X_train, diag_shift=observation_noise_variance)
 
 fig, ax = plt.subplots()
 
-
-ax.imshow(kernel.matrix(X_pred, X_pred), extent=[-1.0, 1.0, 1.0, -1.0],
-          cmap="cividis")
+ax.imshow(schur_complement_kernel.matrix(X_pred, X_pred),
+          extent=[x_min, x_max, x_max, x_min], cmap="cividis")
 
 ax.set_xlabel(r'$x$')
 ax.set_ylabel(r'$x$')
@@ -102,17 +100,6 @@ gprm = tfd.GaussianProcessRegressionModel(
     jitter=jitter
 )
 
-# %%
-
-
-def fill_between_stddev(X_pred, mean_pred, stddev_pred, n=1, ax=None, **kwargs):
-
-    if ax is None:
-        ax = plt.gca()
-
-    ax.fill_between(X_pred,
-                    mean_pred - n * stddev_pred,
-                    mean_pred + n * stddev_pred, **kwargs)
 
 # %%
 

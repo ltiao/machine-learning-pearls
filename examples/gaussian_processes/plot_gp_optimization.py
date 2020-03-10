@@ -20,6 +20,7 @@ import pandas as pd
 
 from collections import defaultdict
 from etudes.datasets import synthetic_sinusoidal, make_regression_dataset
+from etudes.plotting import fill_between_stddev
 
 # %%
 

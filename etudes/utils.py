@@ -1,12 +1,63 @@
+import numpy as np
 import tensorflow as tf
+
 import pandas as pd
 
 from pathlib import Path
 
 
+def get_steps_per_epoch(num_train, batch_size):
+
+    return num_train // batch_size
+
+
+def get_kl_weight(num_train, batch_size):
+
+    kl_weight = batch_size / num_train
+
+    return kl_weight
+
+
 def to_numpy(transformed_variable):
 
     return tf.convert_to_tensor(transformed_variable).numpy()
+
+
+def inducing_index_points_history_to_dataframe(inducing_index_points_history):
+    # TODO: this will fail for `num_features > 1`
+    return pd.DataFrame(np.hstack(inducing_index_points_history).T)
+
+
+def variational_scale_history_to_dataframe(variational_scale_history,
+                                           num_epochs):
+
+    a = np.stack(variational_scale_history, axis=0).reshape(num_epochs, -1)
+    return pd.DataFrame(a)
+
+
+def save_results(history, name, learning_rate, beta1, beta2,
+                 num_epochs, summary_dir, seed):
+
+    inducing_index_points_history_df = \
+        inducing_index_points_history_to_dataframe(history.pop("inducing_index_points"))
+
+    variational_loc_history_df = pd.DataFrame(history.pop("variational_loc"))
+    variational_scale_history_df = \
+        variational_scale_history_to_dataframe(history.pop("variational_scale"),
+                                               num_epochs)
+
+    history_df = pd.DataFrame(history).assign(name=name, seed=seed,
+                                              learning_rate=learning_rate,
+                                              beta1=beta1, beta2=beta2)
+
+    output_dir = Path(summary_dir).joinpath(name)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # TODO: add flexibility and de-clutter
+    inducing_index_points_history_df.to_csv(output_dir.joinpath(f"inducing_index_points.{seed:03d}.csv"), index_label="epoch")
+    variational_loc_history_df.to_csv(output_dir.joinpath(f"variational_loc.{seed:03d}.csv"), index_label="epoch")
+    variational_scale_history_df.to_csv(output_dir.joinpath(f"variational_scale.{seed:03d}.csv"), index_label="epoch")
+    history_df.to_csv(output_dir.joinpath(f"scalars.{seed:03d}.csv"), index_label="epoch")
 
 
 def preprocess(df):

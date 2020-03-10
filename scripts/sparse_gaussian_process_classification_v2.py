@@ -3,16 +3,15 @@ import sys
 import click
 
 import numpy as np
-import pandas as pd
 
 import tensorflow.compat.v1 as tf
 import tensorflow_probability as tfp
 
 from collections import defaultdict
-from pathlib import Path
 from tqdm import trange
 
 from etudes.datasets import make_classification_dataset
+from etudes.utils import (get_kl_weight, save_results, to_numpy)
 
 tfd = tfp.distributions
 kernels = tfp.math.psd_kernels
@@ -61,43 +60,6 @@ def log_likelihood(y, f):
 
     p = make_likelihood(f)
     return p.log_prob(y)
-
-
-def inducing_index_points_history_to_dataframe(inducing_index_points_history):
-    # TODO: this will fail for `num_features > 1`
-    return pd.DataFrame(np.hstack(inducing_index_points_history).T)
-
-
-def variational_scale_history_to_dataframe(variational_scale_history,
-                                           num_epochs):
-
-    a = np.stack(variational_scale_history, axis=0).reshape(num_epochs, -1)
-    return pd.DataFrame(a)
-
-
-def save_results(history, name, learning_rate, beta1, beta2,
-                 num_epochs, summary_dir, seed):
-
-    inducing_index_points_history_df = \
-        inducing_index_points_history_to_dataframe(history.pop("inducing_index_points"))
-
-    variational_loc_history_df = pd.DataFrame(history.pop("variational_loc"))
-    variational_scale_history_df = \
-        variational_scale_history_to_dataframe(history.pop("variational_scale"),
-                                               num_epochs)
-
-    history_df = pd.DataFrame(history).assign(name=name, seed=seed,
-                                              learning_rate=learning_rate,
-                                              beta1=beta1, beta2=beta2)
-
-    output_dir = Path(summary_dir).joinpath(name)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # TODO: add flexibility and de-clutter
-    inducing_index_points_history_df.to_csv(output_dir.joinpath(f"inducing_index_points.{seed:03d}.csv"), index_label="epoch")
-    variational_loc_history_df.to_csv(output_dir.joinpath(f"variational_loc.{seed:03d}.csv"), index_label="epoch")
-    variational_scale_history_df.to_csv(output_dir.joinpath(f"variational_scale.{seed:03d}.csv"), index_label="epoch")
-    history_df.to_csv(output_dir.joinpath(f"scalars.{seed:03d}.csv"), index_label="epoch")
 
 
 @click.command()
@@ -161,8 +123,6 @@ def main(name, num_train, num_test, num_features, num_query_points,
     X_train, y_train = load_data(num_train)
     X_test, y_test = load_data(num_test)
 
-    tf.disable_v2_behavior()
-
     x_min, x_max = -5.0, 5.0
     # query index points
     X_pred = np.linspace(x_min, x_max, num_query_points) \
@@ -170,14 +130,13 @@ def main(name, num_train, num_test, num_features, num_query_points,
 
     # Model
     # TODO: allow specification of initial values
-    ln_initial_amplitude = np.float64(0)
-    ln_initial_length_scale = np.float64(-1)
-    ln_initial_observation_noise_variance = np.float64(-5)
-
-    amplitude = tf.exp(tf.Variable(ln_initial_amplitude), name='amplitude')
-    length_scale = tf.exp(tf.Variable(ln_initial_length_scale), name='length_scale')
-    observation_noise_variance = tf.exp(tf.Variable(ln_initial_observation_noise_variance,
-                                                    name='observation_noise_variance'))
+    amplitude = tfp.util.TransformedVariable(
+        1.0, bijector=tfp.bijectors.Exp(), dtype="float64", name='amplitude')
+    length_scale = tfp.util.TransformedVariable(
+        0.5, bijector=tfp.bijectors.Exp(), dtype="float64", name='length_scale')
+    observation_noise_variance = tfp.util.TransformedVariable(
+        1e-1, bijector=tfp.bijectors.Exp(), dtype="float64",
+        name='observation_noise_variance')
 
     kernel = kernel_cls(amplitude=amplitude, length_scale=length_scale)
 
@@ -206,61 +165,55 @@ def main(name, num_train, num_test, num_features, num_query_points,
     dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train)) \
                              .shuffle(seed=seed, buffer_size=SHUFFLE_BUFFER_SIZE) \
                              .batch(batch_size, drop_remainder=True)
-    iterator = tf.data.make_initializable_iterator(dataset)
-    X_batch, y_batch = iterator.get_next()
 
-    ell = vgp.surrogate_posterior_expected_log_likelihood(
-        observation_index_points=X_batch,
-        observations=y_batch,
-        log_likelihood_fn=log_likelihood,
-        quadrature_size=quadrature_size
-    )
+    @tf.function
+    def elbo(X_batch, y_batch):
 
-    kl = vgp.surrogate_posterior_kl_divergence_prior()
-    kl_weight = batch_size / num_train
+        ell = vgp.surrogate_posterior_expected_log_likelihood(
+            observation_index_points=X_batch,
+            observations=y_batch,
+            log_likelihood_fn=log_likelihood,
+            quadrature_size=quadrature_size
+        )
 
-    nelbo = kl_weight * kl - ell
+        kl = vgp.surrogate_posterior_kl_divergence_prior()
+        kl_weight = get_kl_weight(num_train, batch_size)
 
-    steps_per_epoch = num_train // batch_size
+        return ell - kl_weight * kl
 
-    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate,
-                                       beta1=beta1, beta2=beta2)
-    train_op = optimizer.minimize(nelbo)
+    # steps_per_epoch = get_steps_per_epoch(num_train, batch_size)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate,
+                                         beta_1=beta1, beta_2=beta2)
 
     timestamp = tf.timestamp()
 
-    keys = ["nelbo", "amplitude", "length_scale", "observation_noise_variance",
+    keys = ["amplitude", "length_scale", "observation_noise_variance",
             "inducing_index_points", "variational_loc", "variational_scale",
             "timestamp"]
-    tensors = [nelbo, amplitude, length_scale, observation_noise_variance,
+    tensors = [amplitude, length_scale, observation_noise_variance,
                inducing_index_points, variational_loc, variational_scale,
                timestamp]
 
-    fetches = [train_op]
-    fetches.extend(tensors)
-
     history = defaultdict(list)
 
-    with tf.Session() as sess:
+    with trange(num_epochs, unit="epoch") as range_epochs:
 
-        sess.run(tf.global_variables_initializer())
+        for epoch in range_epochs:
 
-        with trange(num_epochs, unit="epoch") as range_epochs:
+            for step, (X_batch, y_batch) in enumerate(dataset):
 
-            for epoch in range_epochs:
+                with tf.GradientTape() as tape:
+                    nelbo = - elbo(X_batch, y_batch)
+                    gradients = tape.gradient(nelbo, vgp.trainable_variables)
+                    optimizer.apply_gradients(zip(gradients, vgp.trainable_variables))
 
-                # (re)initialize dataset iterator
-                sess.run(iterator.initializer)
+            history["nelbo"].append(to_numpy(nelbo))
 
-                for step in trange(steps_per_epoch, unit="step", leave=False):
+            for key, tensor in zip(keys, tensors):
 
-                    _, *values = sess.run(fetches)
+                history[key].append(to_numpy(tensor))
 
-                for key, value in zip(keys, values):
-
-                    history[key].append(value)
-
-                range_epochs.set_postfix(nelbo=history["nelbo"][-1])
+            range_epochs.set_postfix(nelbo=history["nelbo"][-1])
 
     save_results(history, name, learning_rate, beta1, beta2, num_epochs,
                  summary_dir, seed)
