@@ -10,8 +10,9 @@ import tensorflow_probability as tfp
 from collections import defaultdict
 from tqdm import trange
 
+from etudes.utils import (get_distribution_pair, get_kl_weight,
+                          get_steps_per_epoch, save_results, DistributionPair)
 from etudes.datasets import make_classification_dataset
-from etudes.utils import get_kl_weight, save_results
 
 tfd = tfp.distributions
 kernels = tfp.math.psd_kernels
@@ -19,20 +20,21 @@ kernels = tfp.math.psd_kernels
 tf.logging.set_verbosity(tf.logging.INFO)
 
 # TODO: add support for option
-kernel_cls = kernels.ExponentiatedQuadratic
+kernel_cls = kernels.MaternFiveHalves
 
-NUM_TRAIN = 512
+NUM_TRAIN = 2048
 NUM_TEST = 1024
 NUM_FEATURES = 1
 NUM_INDUCING_POINTS = 32
 NUM_QUERY_POINTS = 256
 
 NOISE_VARIANCE = 1e-1
-JITTER = 1e-6
+JITTER = 5e-6
 
-QUADRATURE_SIZE = 5
+QUADRATURE_SIZE = 20
 NUM_EPOCHS = 2000
 BATCH_SIZE = 64
+SHUFFLE_BUFFER_SIZE = 256
 
 LEARNING_RATE = 1e-3
 BETA1 = 0.9
@@ -47,8 +49,6 @@ LOG_PERIOD = 1
 
 SEED = 8888
 
-SHUFFLE_BUFFER_SIZE = 256
-
 
 def make_likelihood(f):
 
@@ -60,6 +60,84 @@ def log_likelihood(y, f):
 
     p = make_likelihood(f)
     return p.log_prob(y)
+
+
+# TODO(LT):
+# Look into subclassing a well-established API such as the scikit-learn
+# estimator API the Keras Functional Model API, or the TensorFlow Probability
+# Distribution layer to maximize interoperability with other functionality
+# (e.g. model # selection, cross-validation and other boilerplate).
+class GPClassifier:
+
+    def __init__(self, jitter=1e-6, seed=None):
+
+        self.kernel = 1
+
+        # TODO: Parameter initialization
+        self.inducing_index_points = 1
+        self.variational_loc = 1
+        self.variational_scale = 1
+        self.observation_noise_variance = 1
+        self.jitter = jitter
+
+        self.seed = seed
+
+    def __call__(self, X_pred, jitter=None):
+
+        if jitter is None:
+            jitter = self.jitter
+
+        return tfd.VariationalGaussianProcess(
+            kernel=self.kernel, index_points=X_pred,
+            inducing_index_points=self.inducing_index_points,
+            variational_inducing_observations_loc=self.variational_loc,
+            variational_inducing_observations_scale=self.variational_scale,
+            observation_noise_variance=self.observation_noise_variance,
+            jitter=jitter
+        )
+
+    def sample_likelihood(self, X_pred, num_samples=None, jitter=None):
+        """
+        Sample a batch of likelihood distributions
+            p(y|f^(s)), f^(s) ~ q(f) for s in 1...S
+        """
+        qf = self(X_pred, jitter)
+        qf_samples = qf.sample(num_samples)
+        return make_likelihood(qf_samples)
+
+    def fit(self, X_train, y_train, batch_size=64, buffer_size=256):
+
+        dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train)) \
+                                 .shuffle(seed=self.seed, buffer_size=buffer_size) \
+                                 .batch(batch_size, drop_remainder=True)
+        iterator = tf.data.make_initializable_iterator(dataset)
+        X_batch, y_batch = iterator.get_next()
+        # TODO: Parameter initialization
+
+    def score(self, X_test, y_test, num_samples=None, jitter=None):
+        likelihood = self.sample_likelihood(X_test, num_samples, jitter)
+        return likelihood.log_prob(y_test)
+
+    def predict(self, X_test, num_samples=None, jitter=None):
+        likelihood = self.sample_likelihood(X_test, num_samples, jitter)
+        # TODO: Add support for othe methods, such as `stddev()`.
+        return likelihood.mean()
+
+
+class GPDRE(GPClassifier):
+    """
+    Gaussian Process Density Ratio Estimator.
+    """
+    def fit(self, X_p, X_q, batch_size=64, buffer_size=256):
+
+        X_train, y_train = make_classification_dataset(shuffle=False)
+        super(GPDRE, self).fit(X_train, y_train, batch_size, buffer_size)
+
+    def __call__(self, X_pred, jitter=None):
+
+        qf = super(GPDRE, self).__call__(X_pred, jitter=None)
+        return tfd.Independent(tfd.LogNormal(qf.mean(), qf.stddev()),
+                               reinterpreted_batch_ndims=1)
 
 
 @click.command()
@@ -112,28 +190,28 @@ def main(name, num_train, num_test, num_features, num_query_points,
 
     random_state = np.random.RandomState(seed)
 
-    # Dataset (training index points)
-    p = tfd.MixtureSameFamily(
-        mixture_distribution=tfd.Categorical(probs=[0.3, 0.7]),
-        components_distribution=tfd.Normal(loc=[2.0, -3.0], scale=[1.0, 0.5]))
-    q = tfd.Normal(loc=0.0, scale=2.0)
+    problem_name = "bimodal"
+    distribution_pair = get_distribution_pair(problem_name)
 
-    load_data = make_classification_dataset(p, q)
+    # p = tfd.MixtureSameFamily(
+    #     mixture_distribution=tfd.Categorical(probs=[0.3, 0.7]),
+    #     components_distribution=tfd.Normal(loc=[2.0, -3.0],
+    #                                        scale=[1.0, 0.5]))
+    # q = tfd.Normal(loc=0.0, scale=2.0)
+    # distribution_pair = DistributionPair(p, q)
 
-    X_train, y_train = load_data(num_train)
-    X_test, y_test = load_data(num_test)
+    # TODO: this seed should be fixed throughout all experiment repetitions
+    # and thus be distinguished from the `seed` argument, which is to allow
+    # different randomness across different experiment repetitions.
+    X_train, y_train = distribution_pair.make_classification_dataset(num_train, seed=666)
+    X_test, y_test = distribution_pair.make_classification_dataset(num_test, seed=666)
 
     tf.disable_v2_behavior()
-
-    x_min, x_max = -5.0, 5.0
-    # query index points
-    X_pred = np.linspace(x_min, x_max, num_query_points) \
-        .reshape(-1, num_features)
 
     # Model
     # TODO: allow specification of initial values
     ln_initial_amplitude = np.float64(0)
-    ln_initial_length_scale = np.float64(-1)
+    ln_initial_length_scale = np.float64(0)
     ln_initial_observation_noise_variance = np.float64(-5)
 
     amplitude = tf.exp(tf.Variable(ln_initial_amplitude), name='amplitude')
@@ -154,6 +232,11 @@ def main(name, num_train, num_test, num_features, num_query_points,
                                   name='variational_loc')
     variational_scale = tf.Variable(np.eye(num_inducing_points),
                                     name='variational_scale')
+
+    x_min, x_max = -5.0, 5.0
+    # query index points
+    X_pred = np.linspace(x_min, x_max, num_query_points) \
+        .reshape(-1, num_features)
 
     vgp = tfd.VariationalGaussianProcess(
         kernel=kernel,
@@ -182,7 +265,7 @@ def main(name, num_train, num_test, num_features, num_query_points,
 
     nelbo = - elbo
 
-    steps_per_epoch = num_train // batch_size
+    steps_per_epoch = get_steps_per_epoch(num_train, batch_size)
 
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate,
                                        beta1=beta1, beta2=beta2)

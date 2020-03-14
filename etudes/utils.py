@@ -1,9 +1,141 @@
 import numpy as np
 import tensorflow as tf
+import tensorflow_probability as tfp
 
 import pandas as pd
 
+from tensorflow.keras.metrics import binary_accuracy
+from .datasets import make_classification_dataset \
+    as _make_classification_dataset
+from .math import expectation_gauss_hermite, divergence_gauss_hermite \
+    as _divergence_gauss_hermite
 from pathlib import Path
+
+# shortcuts
+tfd = tfp.distributions
+
+
+class DistributionPair:
+
+    def __init__(self, p, q):
+
+        self.p = p
+        self.q = q
+
+    @classmethod
+    def reverse(cls, distribution_pair):
+        return cls(p=distribution_pair.q, q=distribution_pair.p)
+
+    def make_dataset(self, num_samples, rate=0.5, dtype="float64", seed=None):
+
+        num_p = int(num_samples * rate)
+        num_q = num_samples - num_p
+
+        X_p = self.p.sample(sample_shape=(num_p, 1), seed=seed).numpy()
+        X_q = self.q.sample(sample_shape=(num_q, 1), seed=seed).numpy()
+
+        return X_p, X_q
+
+    def make_classification_dataset(self, num_samples, rate=0.5,
+                                    dtype="float64", seed=None):
+
+        X_p, X_q = self.make_dataset(num_samples, rate, dtype, seed)
+        X, y = _make_classification_dataset(X_p, X_q, dtype=dtype,
+                                            random_state=seed)
+
+        return X, y
+
+    def logit(self, x):
+
+        return self.p.log_prob(x) - self.q.log_prob(x)
+
+    def density_ratio(self, x):
+
+        return tf.exp(self.logit(x))
+
+    def optimal_score(self, x):
+
+        return tf.sigmoid(self.logit(x))
+
+    def optimal_accuracy(self, x_test, y_test):
+
+        # Required when some distributions are inherently `float32` such as
+        # the `MixtureSameFamily`.
+        # TODO: Add flexibility for whether to cast to `float64`.
+        y_pred = tf.cast(tf.squeeze(self.optimal_score(x_test)),
+                         dtype=tf.float64)
+
+        return binary_accuracy(y_test, y_pred)
+
+    def kl_divergence(self):
+
+        return tfd.kl_divergence(self.p, self.q)
+
+    def divergence_monte_carlo(self):
+        # TODO
+        pass
+
+    def make_p_log_prob_estimator(self, logit_estimator):
+        """
+        Recall log r(x) = log p(x) - log q(x). Then, we have,
+            log p(x) = log p(x) - log q(x) + log q(x) = log r(x) + log q(x)
+        """
+        def p_log_prob_estimator(x):
+
+            return self.q.log_prob(x) + logit_estimator(x)
+
+        return p_log_prob_estimator
+
+
+class DistributionPairGaussian(DistributionPair):
+
+    def __init__(self, q, p_loc=0.0, p_scale=1.0):
+
+        super(DistributionPairGaussian, self).__init__(
+            p=tfd.Normal(loc=p_loc, scale=p_scale), q=q)
+
+    def divergence_gauss_hermite(self, quadrature_size,
+                                 discrepancy_fn=tfp.vi.kl_forward):
+
+        return _divergence_gauss_hermite(self.p, self.q,
+                                         quadrature_size, under_p=True,
+                                         discrepancy_fn=discrepancy_fn)
+
+    def kl_divergence_scaled_distribution(self, logit_estimator, quadrature_size):
+        """
+        By definition, r(x) q(x) = p(x). That is, we can think of r(x) as the
+        scaling factor needed to match q(x) to p(x).
+        Let hat{p}(x) = hat{r}(x) q(x). Then, hat{p}(x) ~= p(x) and how good
+        this estimate is depends entirely on how well hat{r}(x) estimates r(x).
+        This function computes KL[p(x) || hat{p}(x)] >= 0 using Gauss-Hermite
+        quadrature assuming p(x) is Gaussian. The lower the better, with
+        equality at p(x) == hat{p}(x).
+        """
+        def fn(x):
+            self.logit(x) - logit_estimator(x)
+
+        return expectation_gauss_hermite(fn, self.p, quadrature_size)
+
+
+qs = {
+    "same": tfd.Normal(loc=0.0, scale=1.0),
+    "scale_lesser": tfd.Normal(loc=0.0, scale=0.6),
+    "scale_greater": tfd.Normal(loc=0.0, scale=2.0),
+    "loc_different": tfd.Normal(loc=0.5, scale=1.0),
+    "additive": tfd.MixtureSameFamily(
+        mixture_distribution=tfd.Categorical(probs=[0.95, 0.05]),
+        components_distribution=tfd.Normal(loc=[0.0, 3.0], scale=[1.0, 1.0])),
+    "bimodal": tfd.MixtureSameFamily(
+        mixture_distribution=tfd.Categorical(probs=[0.4, 0.6]),
+        components_distribution=tfd.Normal(loc=[2.0, -3.0], scale=[1.0, 0.5]))
+}
+
+
+def get_distribution_pair(name):
+
+    p = tfd.Normal(loc=0.0, scale=1.0)
+
+    return DistributionPair(p, qs[name])
 
 
 def get_steps_per_epoch(num_train, batch_size):

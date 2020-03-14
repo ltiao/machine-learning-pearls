@@ -157,9 +157,11 @@ gprm_history = tfd.GaussianProcessRegressionModel(
     observation_noise_variance=history["observation_noise_variance"],
     jitter=jitter)
 gprm_mean = gprm_history.mean()
+gprm_stddev = gprm_history.stddev()
 
 # %%
 
+# "Melt" the dataframe
 d = pd.DataFrame(gprm_mean.numpy(), columns=X_pred.squeeze())
 d.index.name = "epoch"
 d.columns.name = "x"
@@ -177,6 +179,29 @@ sns.lineplot(x='x', y='y', hue="epoch", palette="viridis_r", data=data,
 ax.scatter(X_train, Y_train, marker='x', color='k', label="noisy observations")
 
 ax.set_xlabel('$x$')
-ax.set_ylabel('$y$')
+ax.set_ylabel('$\mu(x)$')
+
+plt.show()
+
+# %%
+
+# "Melt" the dataframe
+d = pd.DataFrame(gprm_stddev.numpy(), columns=X_pred.squeeze())
+d.index.name = "epoch"
+d.columns.name = "x"
+s = d.stack()
+s.name = "y"
+data = s.reset_index()
+data
+
+# %%
+
+fig, ax = plt.subplots()
+
+sns.lineplot(x='x', y='y', hue="epoch", palette="viridis_r", data=data,
+             linewidth=0.2, ax=ax)
+
+ax.set_xlabel('$x$')
+ax.set_ylabel('$\sigma(x)$')
 
 plt.show()

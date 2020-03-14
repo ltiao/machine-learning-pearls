@@ -66,7 +66,7 @@ class GaussianProcessLayer(Layer):
             variational_inducing_observations_loc=self.variational_loc,
             variational_inducing_observations_scale=self.variational_scale,
             mean_fn=self.mean_fn,
-            predictive_noise_variance=1e-1,
+            predictive_noise_variance=1e-1,  # TODO: what does this mean in the non-Gaussian likelihood context? Should keep it zero.
             jitter=self.jitter
         )
 

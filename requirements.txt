@@ -13,3 +13,5 @@ networkx>=2.4
 seaborn>=0.10.0
 
 tables>=3.6.1
+
+densratio

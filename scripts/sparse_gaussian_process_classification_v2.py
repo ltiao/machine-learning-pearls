@@ -10,8 +10,8 @@ import tensorflow_probability as tfp
 from collections import defaultdict
 from tqdm import trange
 
-from etudes.datasets import make_classification_dataset
-from etudes.utils import (get_kl_weight, save_results, to_numpy)
+from etudes.utils import (get_distribution_pair, get_kl_weight, to_numpy,
+                          get_steps_per_epoch, save_results, DistributionPair)
 
 tfd = tfp.distributions
 kernels = tfp.math.psd_kernels
@@ -19,20 +19,21 @@ kernels = tfp.math.psd_kernels
 tf.logging.set_verbosity(tf.logging.INFO)
 
 # TODO: add support for option
-kernel_cls = kernels.ExponentiatedQuadratic
+kernel_cls = kernels.MaternFiveHalves
 
-NUM_TRAIN = 512
+NUM_TRAIN = 2048
 NUM_TEST = 1024
 NUM_FEATURES = 1
 NUM_INDUCING_POINTS = 32
 NUM_QUERY_POINTS = 256
 
 NOISE_VARIANCE = 1e-1
-JITTER = 1e-6
+JITTER = 5e-6
 
-QUADRATURE_SIZE = 5
+QUADRATURE_SIZE = 20
 NUM_EPOCHS = 2000
 BATCH_SIZE = 64
+SHUFFLE_BUFFER_SIZE = 256
 
 LEARNING_RATE = 1e-3
 BETA1 = 0.9
@@ -46,8 +47,6 @@ SUMMARY_PERIOD = 5
 LOG_PERIOD = 1
 
 SEED = 8888
-
-SHUFFLE_BUFFER_SIZE = 256
 
 
 def make_likelihood(f):
@@ -118,15 +117,10 @@ def main(name, num_train, num_test, num_features, num_query_points,
         components_distribution=tfd.Normal(loc=[2.0, -3.0], scale=[1.0, 0.5]))
     q = tfd.Normal(loc=0.0, scale=2.0)
 
-    load_data = make_classification_dataset(p, q)
+    distribution_pair = DistributionPair(p, q)
 
-    X_train, y_train = load_data(num_train)
-    X_test, y_test = load_data(num_test)
-
-    x_min, x_max = -5.0, 5.0
-    # query index points
-    X_pred = np.linspace(x_min, x_max, num_query_points) \
-        .reshape(-1, num_features)
+    X_train, y_train = distribution_pair.make_classification_dataset(num_train, seed=666)
+    X_test, y_test = distribution_pair.make_classification_dataset(num_test, seed=666)
 
     # Model
     # TODO: allow specification of initial values
@@ -151,6 +145,11 @@ def main(name, num_train, num_test, num_features, num_query_points,
                                   name='variational_loc')
     variational_scale = tf.Variable(np.eye(num_inducing_points),
                                     name='variational_scale')
+
+    x_min, x_max = -5.0, 5.0
+    # query index points
+    X_pred = np.linspace(x_min, x_max, num_query_points) \
+        .reshape(-1, num_features)
 
     vgp = tfd.VariationalGaussianProcess(
         kernel=kernel,
@@ -185,6 +184,16 @@ def main(name, num_train, num_test, num_features, num_query_points,
     optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate,
                                          beta_1=beta1, beta_2=beta2)
 
+    @tf.function
+    def train_step(X_batch, y_batch):
+
+        with tf.GradientTape() as tape:
+            nelbo = - elbo(X_batch, y_batch)
+            gradients = tape.gradient(nelbo, vgp.trainable_variables)
+            optimizer.apply_gradients(zip(gradients, vgp.trainable_variables))
+
+        return nelbo
+
     timestamp = tf.timestamp()
 
     keys = ["amplitude", "length_scale", "observation_noise_variance",
@@ -202,10 +211,7 @@ def main(name, num_train, num_test, num_features, num_query_points,
 
             for step, (X_batch, y_batch) in enumerate(dataset):
 
-                with tf.GradientTape() as tape:
-                    nelbo = - elbo(X_batch, y_batch)
-                    gradients = tape.gradient(nelbo, vgp.trainable_variables)
-                    optimizer.apply_gradients(zip(gradients, vgp.trainable_variables))
+                nelbo = train_step(X_batch, y_batch)
 
             range_epochs.set_postfix(nelbo=to_numpy(nelbo))
 

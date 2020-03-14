@@ -6,7 +6,7 @@ import pandas as pd
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from sklearn.utils import check_random_state
+from sklearn.utils import check_random_state, shuffle as _shuffle
 from pathlib import Path
 
 SEED = 42
@@ -78,7 +78,19 @@ def make_regression_dataset(latent_fn=synthetic_sinusoidal):
     return load_data
 
 
-def make_classification_dataset(p=None, q=None):
+def make_classification_dataset(X_pos, X_neg, shuffle=False, dtype="float64",
+                                random_state=None):
+
+    X = np.vstack([X_pos, X_neg]).astype(dtype)
+    y = np.hstack([np.ones(len(X_pos)), np.zeros(len(X_neg))])
+
+    if shuffle:
+        X, y = _shuffle(X, y, random_state=random_state)
+
+    return X, y
+
+
+def make_density_ratio_estimation_dataset(p=None, q=None):
 
     if p is None:
         p = tfd.MixtureSameFamily(
@@ -97,8 +109,8 @@ def make_classification_dataset(p=None, q=None):
         X_p = p.sample(sample_shape=(num_p, 1), seed=seed).numpy()
         X_q = q.sample(sample_shape=(num_q, 1), seed=seed).numpy()
 
-        X = np.vstack([X_p, X_q]).astype(dtype)
-        y = np.hstack([np.ones(num_p), np.zeros(num_q)]).astype(dtype)
+        X, y = make_classification_dataset(X_p, X_q, dtype=dtype,
+                                           random_state=seed)
 
         return X, y
 
