@@ -133,9 +133,7 @@ qs = {
 
 def get_distribution_pair(name):
 
-    p = tfd.Normal(loc=0.0, scale=1.0)
-
-    return DistributionPair(p, qs[name])
+    return DistributionPairGaussian(qs[name])
 
 
 def get_steps_per_epoch(num_train, batch_size):

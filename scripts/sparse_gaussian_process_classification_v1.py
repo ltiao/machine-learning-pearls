@@ -7,6 +7,7 @@ import numpy as np
 import tensorflow.compat.v1 as tf
 import tensorflow_probability as tfp
 
+from tensorflow.keras.metrics import binary_accuracy
 from collections import defaultdict
 from tqdm import trange
 
@@ -112,7 +113,7 @@ class GPClassifier:
                                  .batch(batch_size, drop_remainder=True)
         iterator = tf.data.make_initializable_iterator(dataset)
         X_batch, y_batch = iterator.get_next()
-        # TODO: Parameter initialization
+        # TODO: Training
 
     def score(self, X_test, y_test, num_samples=None, jitter=None):
         likelihood = self.sample_likelihood(X_test, num_samples, jitter)
@@ -206,6 +207,9 @@ def main(name, num_train, num_test, num_features, num_query_points,
     X_train, y_train = distribution_pair.make_classification_dataset(num_train, seed=666)
     X_test, y_test = distribution_pair.make_classification_dataset(num_test, seed=666)
 
+    accuracy_optimal = distribution_pair.optimal_accuracy(X_test, y_test)
+    print("OPTIMAL ACCURACY {:.3f}".format(accuracy_optimal.numpy()))
+
     tf.disable_v2_behavior()
 
     # Model
@@ -233,20 +237,22 @@ def main(name, num_train, num_test, num_features, num_query_points,
     variational_scale = tf.Variable(np.eye(num_inducing_points),
                                     name='variational_scale')
 
-    x_min, x_max = -5.0, 5.0
-    # query index points
-    X_pred = np.linspace(x_min, x_max, num_query_points) \
-        .reshape(-1, num_features)
-
     vgp = tfd.VariationalGaussianProcess(
         kernel=kernel,
-        index_points=X_pred,
+        index_points=X_test,
         inducing_index_points=inducing_index_points,
         variational_inducing_observations_loc=variational_loc,
         variational_inducing_observations_scale=variational_scale,
         observation_noise_variance=observation_noise_variance,
         jitter=jitter
     )
+
+    num_samples = 25
+    samples = vgp.sample(num_samples)
+
+    y_pred = make_likelihood(samples).mean()
+
+    accuracy_test = tf.reduce_mean(binary_accuracy(y_test, y_pred), axis=-1)
 
     dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train)) \
                              .shuffle(seed=seed, buffer_size=SHUFFLE_BUFFER_SIZE) \
@@ -275,10 +281,10 @@ def main(name, num_train, num_test, num_features, num_query_points,
 
     keys = ["nelbo", "amplitude", "length_scale", "observation_noise_variance",
             "inducing_index_points", "variational_loc", "variational_scale",
-            "timestamp"]
+            "timestamp", "accuracy_test"]
     tensors = [nelbo, amplitude, length_scale, observation_noise_variance,
                inducing_index_points, variational_loc, variational_scale,
-               timestamp]
+               timestamp, accuracy_test]
 
     fetches = [train_op]
     fetches.extend(tensors)
@@ -298,13 +304,17 @@ def main(name, num_train, num_test, num_features, num_query_points,
 
                 for step in range(steps_per_epoch):
 
+                    # TODO: Very wasteful to do all these fetches on a per-step
+                    #   basis only to throw them away most of the time.
+                    #   Only saved on the last step on an epoch.
                     _, *values = sess.run(fetches)
 
                 for key, value in zip(keys, values):
 
                     history[key].append(value)
 
-                range_epochs.set_postfix(nelbo=history["nelbo"][-1])
+                range_epochs.set_postfix(nelbo=history["nelbo"][-1],
+                                         accuracy_test=history["accuracy_test"][-1])
 
     save_results(history, name, learning_rate, beta1, beta2, num_epochs,
                  summary_dir, seed)
