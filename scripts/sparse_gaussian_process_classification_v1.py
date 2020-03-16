@@ -23,8 +23,8 @@ tf.logging.set_verbosity(tf.logging.INFO)
 # TODO: add support for option
 kernel_cls = kernels.MaternFiveHalves
 
-NUM_TRAIN = 2048
-NUM_TEST = 1024
+NUM_TRAIN = 5000
+NUM_TEST = 1000
 NUM_FEATURES = 1
 NUM_INDUCING_POINTS = 32
 NUM_QUERY_POINTS = 256
@@ -143,6 +143,7 @@ class GPDRE(GPClassifier):
 
 @click.command()
 @click.argument("name")
+@click.option("--problem-name", type=str)
 @click.option("--num-train", default=NUM_TRAIN, type=int,
               help="Number of training samples")
 @click.option("--num-test", default=NUM_TEST, type=int,
@@ -183,7 +184,7 @@ class GPDRE(GPClassifier):
               help="Interval (number of epochs) between logging metrics")
 @click.option("--jitter", default=JITTER, type=float, help="Jitter")
 @click.option("-s", "--seed", default=SEED, type=int, help="Random seed")
-def main(name, num_train, num_test, num_features, num_query_points,
+def main(name, problem_name, num_train, num_test, num_features, num_query_points,
          num_inducing_points, noise_variance, num_epochs, batch_size,
          quadrature_size, optimize_variational_posterior, learning_rate,
          beta1, beta2, checkpoint_dir, checkpoint_period, summary_dir,
@@ -191,7 +192,6 @@ def main(name, num_train, num_test, num_features, num_query_points,
 
     random_state = np.random.RandomState(seed)
 
-    problem_name = "bimodal"
     distribution_pair = get_distribution_pair(problem_name)
 
     # p = tfd.MixtureSameFamily(
@@ -208,7 +208,9 @@ def main(name, num_train, num_test, num_features, num_query_points,
     X_test, y_test = distribution_pair.make_classification_dataset(num_test, seed=666)
 
     accuracy_optimal = distribution_pair.optimal_accuracy(X_test, y_test)
-    print("OPTIMAL ACCURACY {:.3f}".format(accuracy_optimal.numpy()))
+
+    click.secho("Optimal accuracy: {:.3f}".format(accuracy_optimal.numpy()),
+                fg='green')
 
     tf.disable_v2_behavior()
 
@@ -279,15 +281,12 @@ def main(name, num_train, num_test, num_features, num_query_points,
 
     timestamp = tf.timestamp()
 
-    keys = ["nelbo", "amplitude", "length_scale", "observation_noise_variance",
+    keys = ["amplitude", "length_scale", "observation_noise_variance",
             "inducing_index_points", "variational_loc", "variational_scale",
-            "timestamp", "accuracy_test"]
-    tensors = [nelbo, amplitude, length_scale, observation_noise_variance,
+            "timestamp"]  # , "accuracy_test"]
+    fetches = [amplitude, length_scale, observation_noise_variance,
                inducing_index_points, variational_loc, variational_scale,
-               timestamp, accuracy_test]
-
-    fetches = [train_op]
-    fetches.extend(tensors)
+               timestamp]  # , accuracy_test]
 
     history = defaultdict(list)
 
@@ -303,18 +302,17 @@ def main(name, num_train, num_test, num_features, num_query_points,
                 sess.run(iterator.initializer)
 
                 for step in range(steps_per_epoch):
+                    nelbo_value, _ = sess.run([nelbo, train_op])
 
-                    # TODO: Very wasteful to do all these fetches on a per-step
-                    #   basis only to throw them away most of the time.
-                    #   Only saved on the last step on an epoch.
-                    _, *values = sess.run(fetches)
+                history["nelbo"].append(nelbo)
 
+                values = sess.run(fetches)
                 for key, value in zip(keys, values):
 
                     history[key].append(value)
 
-                range_epochs.set_postfix(nelbo=history["nelbo"][-1],
-                                         accuracy_test=history["accuracy_test"][-1])
+                range_epochs.set_postfix(nelbo=nelbo_value)
+                                         # accuracy_test=history["accuracy_test"][-1])
 
     save_results(history, name, learning_rate, beta1, beta2, num_epochs,
                  summary_dir, seed)

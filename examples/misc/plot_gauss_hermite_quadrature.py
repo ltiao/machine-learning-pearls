@@ -5,7 +5,7 @@ Divergence estimation with Gauss-Hermite Quadrature
 
 Hello world
 """
-# sphinx_gallery_thumbnail_number = 1
+# sphinx_gallery_thumbnail_number = 5
 
 import numpy as np
 
@@ -67,31 +67,31 @@ seed = 8888
 # %%
 
 kl_monte_carlo = tfp.vi.monte_carlo_variational_loss(
-    q.log_prob, p, sample_size=sample_size,
-    discrepancy_fn=tfp.vi.kl_reverse, seed=seed).numpy()
+    p.log_prob, q, sample_size=sample_size,
+    discrepancy_fn=tfp.vi.kl_forward, seed=seed).numpy()
 kl_monte_carlo
 
 # %%
 
-X_samples = p.sample(sample_size, seed=seed)
+x_samples = p.sample(sample_size, seed=seed)
 
 # %%
 
 
 def log_ratio(x):
-    return q.log_prob(x) - p.log_prob(x)
+    return p.log_prob(x) - q.log_prob(x)
 
 
 def h(x):
-    return tfp.vi.kl_reverse(log_ratio(x))
+    return tfp.vi.kl_forward(log_ratio(x))
 
 # %%
 
 
 fig, ax = plt.subplots()
 
-ax.plot(X_pred, h(X_pred), label='$f(x)$')
-ax.scatter(X_samples, h(X_samples))
+ax.plot(X_pred, h(X_pred))
+ax.scatter(x_samples, h(x_samples))
 
 ax.set_xlabel(r'$x$')
 ax.set_ylabel(r'$h(x)$')
@@ -101,30 +101,37 @@ plt.show()
 # %%
 
 
-def divergence_monte_carlo(q_log_prob_fn, p, sample_size,
-                           discrepancy_fn=tfp.vi.kl_reverse, seed=None):
-    # equivalent to:
-    # tfp.vi.monte_carlo_variational_loss(
-    #   q_log_prob_fn, p, sample_size,
-    #   discrepancy_fn, seed
-    # )
+def divergence_monte_carlo(p, q, sample_size, under_p=True,
+                           discrepancy_fn=tfp.vi.kl_forward, seed=None):
 
     def log_ratio(x):
-        return q_log_prob_fn(x) - p.log_prob(x)
+        return p.log_prob(x) - q.log_prob(x)
 
-    def h(x):
-        return discrepancy_fn(log_ratio(x))
+    if under_p:
 
-    X_samples = p.sample(sample_size, seed=seed)
+        # TODO: Raise exception if `p` is non-Gaussian.
+        w = lambda x: tf.exp(-log_ratio(x))
+        dist = p
+
+    else:
+
+        # TODO: Raise exception if `q` is non-Gaussian.
+        w = lambda x: 1.0
+        dist = q
+
+    def fn(x):
+        return w(x) * discrepancy_fn(log_ratio(x))
+
+    x_samples = dist.sample(sample_size, seed=seed)
 
     # same as:
-    # return tfp.monte_carlo.expectation(f=f, samples=X_samples)
-    return tf.reduce_mean(h(X_samples), axis=-1)
+    # return tfp.monte_carlo.expectation(f=fn, samples=x_samples)
+    return tf.reduce_mean(fn(x_samples), axis=-1)
 
 # %%
 
 
-divergence_monte_carlo(q.log_prob, p, sample_size, seed=seed).numpy()
+divergence_monte_carlo(p, q, sample_size, under_p=False, seed=seed).numpy()
 
 # %%
 # Approximate KL divergence (Gauss-Hermite Quadrature)
@@ -169,7 +176,7 @@ plt.show()
 
 fig, ax = plt.subplots()
 
-ax.plot(X_pred, h(X_pred), label='$f(x)$')
+ax.plot(X_pred, h(X_pred))
 ax.scatter(X_samples, h(X_samples), c=weights, cmap="Blues")
 
 ax.set_xlabel(r'$x$')
@@ -180,19 +187,19 @@ plt.show()
 # %%
 
 
-def gauss_hermite_expectation(fn, p, quadrature_size):
+def expectation_gauss_hermite(fn, normal, quadrature_size):
 
     def transform(x, loc, scale):
 
         return np.sqrt(2) * scale * x + loc
 
     x, weights = np.polynomial.hermite.hermgauss(quadrature_size)
-    y = transform(x, p.loc, p.scale)
+    y = transform(x, normal.loc, normal.scale)
 
     return tf.reduce_sum(weights * fn(y), axis=-1) / tf.sqrt(np.pi)
 
 
-def divergence_gauss_hermite(q_log_prob_fn, p, quadrature_size,
+def divergence_gauss_hermite(p, q, quadrature_size, under_p=True,
                              discrepancy_fn=tfp.vi.kl_forward):
     """
     Compute D_f[p || q]
@@ -204,17 +211,29 @@ def divergence_gauss_hermite(q_log_prob_fn, p, quadrature_size,
     Note `discrepancy_fn` corresponds to function `g`.
     """
     def log_ratio(x):
-        return p.log_prob(x) - q_log_prob_fn(x)
+        return p.log_prob(x) - q.log_prob(x)
 
-    def h(x):
-        return tf.exp(-log_ratio(x)) * discrepancy_fn(log_ratio(x))
+    if under_p:
 
-    return gauss_hermite_expectation(h, p, quadrature_size)
+        # TODO: Raise exception if `p` is non-Gaussian.
+        w = lambda x: tf.exp(-log_ratio(x))
+        normal = p
+
+    else:
+
+        # TODO: Raise exception if `q` is non-Gaussian.
+        w = lambda x: 1.0
+        normal = q
+
+    def fn(x):
+        return w(x) * discrepancy_fn(log_ratio(x))
+
+    return expectation_gauss_hermite(fn, normal, quadrature_size)
 
 # %%
 
 
-divergence_gauss_hermite(q.log_prob, p, quadrature_size).numpy()
+divergence_gauss_hermite(p, q, quadrature_size, under_p=False).numpy()
 
 # %%
 # Comparisons
@@ -223,26 +242,37 @@ lst = []
 
 for size in range(1, max_size+1):
 
-    for seed in range(num_seeds):
+    for under_p in range(2):
 
-        kl = divergence_monte_carlo(q.log_prob, p, size, seed=seed).numpy()
-        lst.append(dict(kl=kl, size=size, seed=seed, approximation="Monte Carlo"))
+        under_p = bool(under_p)
 
-    kl = divergence_gauss_hermite(q.log_prob, p, size).numpy()
-    lst.append(dict(kl=kl, size=size, seed=0, approximation="Gauss-Hermite"))
+        for seed in range(num_seeds):
 
-df = pd.DataFrame(lst)
+            kl = divergence_monte_carlo(p, q, size, under_p=under_p,
+                                        seed=seed).numpy()
+            lst.append(dict(kl=kl, size=size, seed=seed,
+                            under="p" if under_p else "q",
+                            approximation="Monte Carlo"))
+
+        kl = divergence_gauss_hermite(p, q, size, under_p=under_p).numpy()
+        lst.append(dict(kl=kl, size=size, seed=0,
+                        under="p" if under_p else "q",
+                        approximation="Gauss-Hermite"))
+
+data = pd.DataFrame(lst)
 
 # %%
 # Results
 
-fig, ax = plt.subplots()
 
-ax.axhline(y=kl_exact, color='tab:red', label='Exact')
+def axhline(*args, **kwargs):
 
-sns.lineplot(x='size', y='kl', hue="approximation", data=df, ax=ax)
+    ax = plt.gca()
+    ax.axhline(kl_exact, color="tab:red", label="Exact")
 
-ax.set_xscale("log")
-ax.set_ylabel("KL divergence")
 
-plt.show()
+g = sns.relplot(x="size", y="kl", hue="approximation",
+                col="under", kind="line", data=data)
+g.map(axhline)
+g.set(xscale="log")
+g.set_axis_labels("size", "KL divergence")
