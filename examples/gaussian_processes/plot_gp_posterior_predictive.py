@@ -13,9 +13,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 import matplotlib.pyplot as plt
-import seaborn as sns
 
-from mpl_toolkits.mplot3d import Axes3D
 from etudes.datasets import synthetic_sinusoidal, make_regression_dataset
 from etudes.plotting import fill_between_stddev
 
@@ -43,7 +41,7 @@ seed = 42  # set random seed for reproducibility
 random_state = np.random.RandomState(seed)
 
 x_min, x_max = -1.0, 1.0
-X_pred = np.linspace(x_min, x_max, num_index_points).reshape(-1, num_features)
+X_test = np.linspace(x_min, x_max, num_index_points).reshape(-1, num_features)
 
 load_data = make_regression_dataset(synthetic_sinusoidal)
 X_train, Y_train = load_data(num_train, num_features,
@@ -57,7 +55,7 @@ X_train, Y_train = load_data(num_train, num_features,
 
 fig, ax = plt.subplots()
 
-ax.plot(X_pred, synthetic_sinusoidal(X_pred), label="true")
+ax.plot(X_test, synthetic_sinusoidal(X_test), label="true", color="tab:gray")
 ax.scatter(X_train, Y_train, marker='x', color='k',
            label="noisy observations")
 
@@ -80,7 +78,7 @@ schur_complement_kernel = kernels.SchurComplement(
 
 fig, ax = plt.subplots()
 
-ax.imshow(schur_complement_kernel.matrix(X_pred, X_pred),
+ax.imshow(schur_complement_kernel.matrix(X_test, X_test),
           extent=[x_min, x_max, x_max, x_min], cmap="cividis")
 
 ax.set_xlabel(r'$x$')
@@ -93,7 +91,7 @@ plt.show()
 # ---------------------------------
 
 gprm = tfd.GaussianProcessRegressionModel(
-    kernel=kernel, index_points=X_pred,
+    kernel=kernel, index_points=X_test,
     observation_index_points=X_train,
     observations=Y_train,
     observation_noise_variance=observation_noise_variance,
@@ -106,22 +104,42 @@ gprm = tfd.GaussianProcessRegressionModel(
 
 fig, ax = plt.subplots()
 
-ax.plot(X_pred, synthetic_sinusoidal(X_pred), label="true")
+ax.plot(X_test, synthetic_sinusoidal(X_test), label="true", color="tab:gray")
 ax.scatter(X_train, Y_train, marker='x', color='k',
            label="noisy observations")
 
-ax.plot(X_pred, gprm.mean(), color="tab:orange",
-        label="posterior predictive mean")
+ax.plot(X_test, gprm.mean(), label="posterior predictive mean")
 
-fill_between_stddev(X_pred.squeeze(),
+fill_between_stddev(X_test.squeeze(),
                     gprm.mean().numpy().squeeze(),
-                    gprm.stddev().numpy().squeeze(),
-                    alpha=0.1, color="tab:orange",
+                    gprm.stddev().numpy().squeeze(), alpha=0.1,
                     label="posterior predictive std dev", ax=ax)
 
 ax.legend()
 
 ax.set_xlim(-0.6, 0.6)
+ax.set_xlabel('$x$')
+ax.set_ylabel('$y$')
+
+plt.show()
+
+# %%
+
+y_min, y_max = -3, 3
+y_num_points = 512
+gprm_marginals = tfd.Normal(loc=gprm.mean(), scale=gprm.stddev())
+Y_q = np.linspace(y_min, y_max, y_num_points).reshape(-1, 1)
+
+fig, ax = plt.subplots()
+
+ax.imshow(gprm_marginals.prob(Y_q), origin="lower",
+          extent=[x_min, x_max, y_min, y_max],
+          aspect="auto", cmap="Blues")
+ax.plot(X_test, gprm.mean(), color="tab:blue")
+
+ax.plot(X_test, gprm.mean() - gprm.stddev(), color="tab:blue", alpha=0.4)
+ax.plot(X_test, gprm.mean() + gprm.stddev(), color="tab:blue", alpha=0.4)
+
 ax.set_xlabel('$x$')
 ax.set_ylabel('$y$')
 

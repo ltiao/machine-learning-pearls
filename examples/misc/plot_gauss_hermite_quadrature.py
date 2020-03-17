@@ -21,7 +21,7 @@ tfd = tfp.distributions
 max_size = 300
 num_seeds = 10
 
-x_min, x_max = -5.0, 5.0
+x_min, x_max = -15.0, 15.0
 
 num_query_points = 256
 num_features = 1
@@ -160,13 +160,19 @@ quadrature_size = 25
 
 # %%
 
+
+def transform(x, loc, scale):
+
+    return np.sqrt(2) * scale * x + loc
+
+
 X_samples, weights = np.polynomial.hermite.hermgauss(quadrature_size)
 
 # %%
 
 fig, ax = plt.subplots()
 
-ax.scatter(X_samples, weights)
+ax.scatter(transform(X_samples, q.loc, q.scale), weights)
 ax.set_xlabel(r'$x_i$')
 ax.set_ylabel(r'$w_i$')
 
@@ -177,7 +183,9 @@ plt.show()
 fig, ax = plt.subplots()
 
 ax.plot(X_pred, h(X_pred))
-ax.scatter(X_samples, h(X_samples), c=weights, cmap="Blues")
+ax.scatter(transform(X_samples, q.loc, q.scale),
+           h(transform(X_samples, q.loc, q.scale)),
+           c=weights, cmap="Blues")
 
 ax.set_xlabel(r'$x$')
 ax.set_ylabel(r'$h(x)$')
@@ -188,10 +196,6 @@ plt.show()
 
 
 def expectation_gauss_hermite(fn, normal, quadrature_size):
-
-    def transform(x, loc, scale):
-
-        return np.sqrt(2) * scale * x + loc
 
     x, weights = np.polynomial.hermite.hermgauss(quadrature_size)
     y = transform(x, normal.loc, normal.scale)

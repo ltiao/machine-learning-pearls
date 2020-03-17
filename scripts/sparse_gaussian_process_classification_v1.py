@@ -192,14 +192,14 @@ def main(name, problem_name, num_train, num_test, num_features, num_query_points
 
     random_state = np.random.RandomState(seed)
 
-    distribution_pair = get_distribution_pair(problem_name)
+    # distribution_pair = get_distribution_pair(problem_name)
 
-    # p = tfd.MixtureSameFamily(
-    #     mixture_distribution=tfd.Categorical(probs=[0.3, 0.7]),
-    #     components_distribution=tfd.Normal(loc=[2.0, -3.0],
-    #                                        scale=[1.0, 0.5]))
-    # q = tfd.Normal(loc=0.0, scale=2.0)
-    # distribution_pair = DistributionPair(p, q)
+    p = tfd.MixtureSameFamily(
+        mixture_distribution=tfd.Categorical(probs=[0.3, 0.7]),
+        components_distribution=tfd.Normal(loc=[2.0, -3.0],
+                                           scale=[1.0, 0.5]))
+    q = tfd.Normal(loc=0.0, scale=2.0)
+    distribution_pair = DistributionPair(p, q)
 
     # TODO: this seed should be fixed throughout all experiment repetitions
     # and thus be distinguished from the `seed` argument, which is to allow
