@@ -5,7 +5,7 @@ Gaussian Process Posterior Predictive
 
 Hello world
 """
-# sphinx_gallery_thumbnail_number = 3
+# sphinx_gallery_thumbnail_number = 4
 
 import numpy as np
 
@@ -125,7 +125,7 @@ plt.show()
 
 # %%
 
-y_min, y_max = -3, 3
+y_min, y_max = -2.5, 2.5
 y_num_points = 512
 gprm_marginals = tfd.Normal(loc=gprm.mean(), scale=gprm.stddev())
 Y_q = np.linspace(y_min, y_max, y_num_points).reshape(-1, 1)
@@ -135,10 +135,10 @@ fig, ax = plt.subplots()
 ax.imshow(gprm_marginals.prob(Y_q), origin="lower",
           extent=[x_min, x_max, y_min, y_max],
           aspect="auto", cmap="Blues")
-ax.plot(X_test, gprm.mean(), color="tab:blue")
+ax.plot(X_test, gprm.mean(), color='k')
 
-ax.plot(X_test, gprm.mean() - gprm.stddev(), color="tab:blue", alpha=0.4)
-ax.plot(X_test, gprm.mean() + gprm.stddev(), color="tab:blue", alpha=0.4)
+ax.plot(X_test, gprm.mean() - gprm.stddev(), color='k', alpha=0.4)
+ax.plot(X_test, gprm.mean() + gprm.stddev(), color='k', alpha=0.4)
 
 ax.set_xlabel('$x$')
 ax.set_ylabel('$y$')
