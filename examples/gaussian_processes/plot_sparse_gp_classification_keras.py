@@ -7,7 +7,7 @@ Here we fit the hyperparameters of a Gaussian Process by maximizing the (log)
 marginal likelihood. This is commonly referred to as empirical Bayes, or
 type-II maximum likelihood estimation.
 """
-# sphinx_gallery_thumbnail_number = 7
+# sphinx_gallery_thumbnail_number = 8
 
 import numpy as np
 
@@ -25,6 +25,8 @@ from etudes.datasets import make_classification_dataset
 from etudes.plotting import fill_between_stddev
 from etudes.utils import get_kl_weight
 
+from collections import defaultdict
+
 # %%
 
 # shortcuts
@@ -34,7 +36,7 @@ kernels = tfp.math.psd_kernels
 
 # constants
 num_train = 2048  # nbr training points in synthetic dataset
-num_test = 1024
+num_test = 40
 num_features = 1  # dimensionality
 num_index_points = 256  # nbr of index points
 num_samples = 25
@@ -362,6 +364,14 @@ dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train)) \
                          .shuffle(seed=seed, buffer_size=shuffle_buffer_size) \
                          .batch(batch_size, drop_remainder=True)
 
+keys = ["inducing_index_points",
+        "variational_inducing_observations_loc",
+        "variational_inducing_observations_scale",
+        "log_observation_noise_variance",
+        "log_amplitude", "log_length_scale"]
+
+history = defaultdict(list)
+
 for epoch in range(num_epochs):
 
     for step, (X_batch, y_batch) in enumerate(dataset):
@@ -371,18 +381,28 @@ for epoch in range(num_epochs):
     print("epoch={epoch:04d}, loss={loss:.4f}"
           .format(epoch=epoch, loss=loss.numpy()))
 
+    history["nelbo"].append(loss.numpy())
 
-# %%
-# Retrieve variables
-[inducing_index_points, variational_inducing_observations_loc,
- variational_inducing_observations_scale, log_observation_noise_variance,
- log_amplitude, log_length_scale] = model.get_weights()
+    for key, tensor in zip(keys, model.get_weights()):
+
+        history[key].append(tensor)
+
 
 # %%
 # Create test-time model with higher `jitter` to be robust to unseen test
 # inputs.
 test_model = build_model(input_dim=num_features, jitter=2.0*jitter)
 test_model.set_weights(model.get_weights())
+
+# %%
+
+inducing_index_points_history = history.pop("inducing_index_points")
+variational_inducing_observations_loc_history = (
+    history.pop("variational_inducing_observations_loc"))
+
+inducing_index_points = inducing_index_points_history[-1]
+variational_inducing_observations_loc = (
+    variational_inducing_observations_loc_history[-1])
 
 # %%
 # Log density ratio, log-odds, or logits.
@@ -401,6 +421,8 @@ fill_between_stddev(X_q.squeeze(),
 
 ax.scatter(inducing_index_points, np.full_like(inducing_index_points, y_min),
            marker='^', c="tab:gray", label="inducing inputs", alpha=0.4)
+ax.scatter(inducing_index_points, variational_inducing_observations_loc,
+           marker='+', c="tab:blue", label="inducing variable mean")
 
 ax.set_xlabel('$x$')
 ax.set_ylabel('$f(x)$')
@@ -436,14 +458,16 @@ plt.show()
 # Predictive mean samples.
 
 
-def predictive_mean(x, num_samples=None):
+posterior_predictive = tf.keras.Sequential([
+    test_model,
+    tfp.layers.IndependentBernoulli(event_shape=(num_index_points,))
+])
 
-    return make_binary_classification_likelihood(f=test_model(x).sample(num_samples)).mean()
-
+# %%
 
 fig, ax = plt.subplots()
 
-ax.plot(X_q, predictive_mean(X_q, num_samples).numpy().T, alpha=0.4)
+ax.plot(X_q, posterior_predictive(X_q).mean())
 ax.plot(X_q, optimal_score(X_q), c='k', label=r"$\pi(x) = \sigma(f(x))$")
 ax.scatter(X_train, y_train, c=y_train, s=12.**2,
            marker='s', alpha=0.1, cmap="coolwarm_r")
@@ -454,3 +478,144 @@ ax.set_xlabel('$x$')
 ax.legend()
 
 plt.show()
+
+# %%
+
+
+def make_posterior_predictive(num_samples=None):
+
+    def posterior_predictive(x):
+
+        f_samples = test_model(x).sample(num_samples)
+
+        return make_binary_classification_likelihood(f=f_samples)
+
+    return posterior_predictive
+
+
+posterior_predictive = make_posterior_predictive(num_samples)
+
+# %%
+
+fig, ax = plt.subplots()
+
+ax.plot(X_q, posterior_predictive(X_q).mean().numpy().T, color="tab:blue",
+        linewidth=0.4, alpha=0.6)
+ax.plot(X_q, optimal_score(X_q), c='k', label=r"$\pi(x) = \sigma(f(x))$")
+ax.scatter(X_train, y_train, c=y_train, s=12.**2,
+           marker='s', alpha=0.1, cmap="coolwarm_r")
+ax.set_yticks([0, 1])
+ax.set_yticklabels([r"$x_q \sim q(x)$", r"$x_p \sim p(x)$"])
+ax.set_xlabel('$x$')
+
+ax.legend()
+
+plt.show()
+
+# %%
+
+y_scores = posterior_predictive(X_test).mean().numpy()
+y_score_min, y_score_max = np.percentile(y_scores, q=[5, 95], axis=0)
+
+# %%
+
+fig, ax = plt.subplots()
+
+ax.plot(X_q, optimal_score(X_q), c='k', label=r"$\pi(x) = \sigma(f(x))$")
+
+ax.scatter(X_test, np.median(y_scores, axis=0), c="tab:blue", label="median",
+           alpha=0.8)
+ax.vlines(X_test, ymin=y_score_min, ymax=y_score_max, color="tab:blue",
+          label="90\% confidence interval", alpha=0.8)
+
+ax.scatter(X_test, y_test, c=y_test, s=12.**2,
+           marker='s', alpha=0.1, cmap="coolwarm_r")
+
+ax.set_ylabel(r"$\pi(x)$")
+ax.set_xlabel(r"$x$")
+ax.set_xlim(x_min, x_max)
+
+ax.legend()
+
+plt.show()
+
+# %%
+
+
+def get_inducing_index_points_data(inducing_index_points):
+
+    df = pd.DataFrame(np.hstack(inducing_index_points).T)
+    df.index.name = "epoch"
+    df.columns.name = "inducing index points"
+
+    s = df.stack()
+    s.name = 'x'
+
+    return s.reset_index()
+
+# %%
+
+
+data = get_inducing_index_points_data(inducing_index_points_history)
+
+# %%
+
+
+fig, ax = plt.subplots()
+
+sns.lineplot(x='x', y="epoch", hue="inducing index points", palette="viridis",
+             sort=False, data=data, alpha=0.8, ax=ax)
+
+ax.set_xlabel(r'$x$')
+
+plt.show()
+
+# %%
+
+variational_inducing_observations_scale_history = (
+    history.pop("variational_inducing_observations_scale"))
+
+# %%
+
+fig, (ax1, ax2) = plt.subplots(ncols=2, sharex=True, sharey=True)
+
+im2 = ax2.imshow(variational_inducing_observations_scale_history[-1])
+
+vmin, vmax = im2.get_clim()
+im1 = ax1.imshow(variational_inducing_observations_scale_history[0],
+                 vmin=vmin, vmax=vmax)
+
+fig.colorbar(im2, ax=[ax1, ax2],
+             orientation="horizontal")
+
+ax1.set_xlabel(r"$i$")
+ax1.set_ylabel(r"$j$")
+
+ax2.set_xlabel(r"$i$")
+
+plt.show()
+
+# %%
+
+history_df = pd.DataFrame(history)
+history_df.index.name = "epoch"
+history_df.reset_index(inplace=True)
+
+# %%
+
+fig, ax = plt.subplots()
+
+sns.lineplot(x="epoch", y="nelbo", data=history_df, alpha=0.8, ax=ax)
+ax.set_yscale("log")
+
+plt.show()
+
+# %%
+
+parameters_df = history_df.drop(columns="nelbo") \
+                          .rename(columns=lambda s: s.replace('_', ' '))
+
+# %%
+
+g = sns.PairGrid(parameters_df, hue="epoch", palette="RdYlBu", corner=True)
+g = g.map_lower(plt.scatter, facecolor="none", alpha=0.6)
