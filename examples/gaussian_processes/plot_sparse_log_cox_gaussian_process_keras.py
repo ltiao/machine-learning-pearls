@@ -375,7 +375,7 @@ plt.show()
 # Predictive mean samples.
 
 posterior_predictive = tf.keras.Sequential([
-    model, tfp.layers.IndependentBernoulli(event_shape=(num_index_points,))
+    model, tfp.layers.IndependentPoisson(event_shape=(num_index_points,))
 ])
 # %%
 
@@ -394,7 +394,7 @@ plt.show()
 # %%
 
 
-def make_posterior_predictive(num_samples=None):
+def make_posterior_predictive(num_samples=None, seed=None):
 
     def posterior_predictive(x):
 
@@ -407,7 +407,7 @@ def make_posterior_predictive(num_samples=None):
 # %%
 
 
-posterior_predictive = make_posterior_predictive(num_samples)
+posterior_predictive = make_posterior_predictive(num_samples, seed=seed)
 
 # %%
 

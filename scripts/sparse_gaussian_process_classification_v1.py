@@ -68,28 +68,63 @@ def log_likelihood(y, f):
 # estimator API the Keras Functional Model API, or the TensorFlow Probability
 # Distribution layer to maximize interoperability with other functionality
 # (e.g. model # selection, cross-validation and other boilerplate).
-class GPClassifier:
+class GaussianProcessDensityRatioEstimator:
 
-    def __init__(self, jitter=1e-6, seed=None):
+    def __init__(self, input_dim, num_inducing_points,
+                 inducing_index_points_initializer, use_ard=True,
+                 jitter=1e-6, dtype=tf.float64, seed=None):
 
-        self.kernel = 1
+        # TODO: should support an optional kernel argument, and only
+        # instantiate a new kernel if this argument is not provided.
+        # TODO: Add options for initial values of each parameter.
+        # TODO: Add option for different bijectors, particular SoftPlus.
+        self.amplitude = tfp.util.TransformedVariable(
+            1.0, bijector=tfp.bijectors.Exp(),
+            dtype=dtype, name="amplitude")
+        self.length_scale = tfp.util.TransformedVariable(
+            1.0, bijector=tfp.bijectors.Exp(),
+            dtype=dtype, name="length_scale")
+        self.scale_diag = tfp.util.TransformedVariable(
+            np.ones(input_dim), bijector=tfp.bijectors.Exp(),
+            dtype=dtype, name="scale_diag")
 
-        # TODO: Parameter initialization
-        self.inducing_index_points = 1
-        self.variational_loc = 1
-        self.variational_scale = 1
-        self.observation_noise_variance = 1
+        self.base_kernel = kernel_cls(amplitude=self.amplitude,
+                                      length_scale=self.length_scale)
+
+        if input_dim > 1 and use_ard:
+            self.kernel = kernels.FeatureScaled(self.base_kernel,
+                                                scale_diag=self.scale_diag)
+        else:
+            self.kernel = self.base_kernel
+
+        self.observation_noise_variance = tfp.util.TransformedVariable(
+            1e-3, bijector=tfp.bijectors.Exp(),
+            dtype=dtype, name="observation_noise_variance")
+
+        self.inducing_index_points = tf.Variable(
+            inducing_index_points_initializer(
+                shape=(num_inducing_points, input_dim), dtype=dtype),
+            name="inducing_index_points")
+
+        self.variational_inducing_observations_loc = tf.Variable(
+            np.zeros(num_inducing_points),
+            name="variational_inducing_observations_loc")
+
+        self.variational_inducing_observations_scale = tf.Variable(
+            np.eye(num_inducing_points),
+            name="variational_inducing_observations_scale"
+        )
+
         self.jitter = jitter
-
         self.seed = seed
 
-    def __call__(self, X_pred, jitter=None):
+    def __call__(self, X, jitter=None):
 
         if jitter is None:
             jitter = self.jitter
 
         return tfd.VariationalGaussianProcess(
-            kernel=self.kernel, index_points=X_pred,
+            kernel=self.kernel, index_points=X,
             inducing_index_points=self.inducing_index_points,
             variational_inducing_observations_loc=self.variational_loc,
             variational_inducing_observations_scale=self.variational_scale,
@@ -97,23 +132,53 @@ class GPClassifier:
             jitter=jitter
         )
 
-    def sample_likelihood(self, X_pred, num_samples=None, jitter=None):
-        """
-        Sample a batch of likelihood distributions
-            p(y|f^(s)), f^(s) ~ q(f) for s in 1...S
-        """
-        qf = self(X_pred, jitter)
-        qf_samples = qf.sample(num_samples)
-        return make_likelihood(qf_samples)
+    def compile(self, optimizer=None):
 
-    def fit(self, X_train, y_train, batch_size=64, buffer_size=256):
+        if optimizer is None:
+            # TODO: Support parameters
+            optimizer = tf.keras.optimizers.Adam()
+
+        self.optimizer = optimizer
+
+    def fit(self, X_train, y_train, num_epochs, batch_size=64,
+            quadrature_size=20, buffer_size=256):
+
+        num_train = len(X_train)
+        kl_weight = get_kl_weight(num_train, batch_size)
+
+        @tf.function
+        def elbo(X_batch, y_batch):
+
+            ell = self(X_batch).surrogate_posterior_expected_log_likelihood(
+                observations=y_batch,
+                log_likelihood_fn=log_likelihood,
+                quadrature_size=quadrature_size)
+
+            kl = self(X_batch).surrogate_posterior_kl_divergence_prior()
+
+            return ell - kl_weight * kl
+
+        @tf.function
+        def train_step(X_batch, y_batch):
+
+            with tf.GradientTape() as tape:
+                nelbo = - elbo(X_batch, y_batch)
+                gradients = tape.gradient(nelbo, vgp.trainable_variables)
+                self.optimizer.apply_gradients(zip(gradients, vgp.trainable_variables))
+
+            return nelbo
 
         dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train)) \
                                  .shuffle(seed=self.seed, buffer_size=buffer_size) \
                                  .batch(batch_size, drop_remainder=True)
-        iterator = tf.data.make_initializable_iterator(dataset)
-        X_batch, y_batch = iterator.get_next()
-        # TODO: Training
+
+        # history = defaultdict(list)
+
+        for epoch in range(num_epochs):
+
+            for step, (X_batch, y_batch) in enumerate(dataset):
+
+                train_step(X_batch, y_batch)
 
     def score(self, X_test, y_test, num_samples=None, jitter=None):
         likelihood = self.sample_likelihood(X_test, num_samples, jitter)
@@ -124,21 +189,27 @@ class GPClassifier:
         # TODO: Add support for othe methods, such as `stddev()`.
         return likelihood.mean()
 
+    def predictive(self, X, num_samples=None, jitter=None):
+        """
+        Sample a batch of likelihood distributions
+            p(y|f^(s)), f^(s) ~ q(f) for s in 1...S
+        """
+        return make_likelihood(self(X, jitter).sample(num_samples))
 
-class GPDRE(GPClassifier):
-    """
-    Gaussian Process Density Ratio Estimator.
-    """
-    def fit(self, X_p, X_q, batch_size=64, buffer_size=256):
+# class GPDRE(GPClassifier):
+#     """
+#     Gaussian Process Density Ratio Estimator.
+#     """
+#     def fit(self, X_p, X_q, batch_size=64, buffer_size=256):
 
-        X_train, y_train = make_classification_dataset(shuffle=False)
-        super(GPDRE, self).fit(X_train, y_train, batch_size, buffer_size)
+#         X_train, y_train = make_classification_dataset(shuffle=False)
+#         super(GPDRE, self).fit(X_train, y_train, batch_size, buffer_size)
 
-    def __call__(self, X_pred, jitter=None):
+#     def __call__(self, X_pred, jitter=None):
 
-        qf = super(GPDRE, self).__call__(X_pred, jitter=None)
-        return tfd.Independent(tfd.LogNormal(qf.mean(), qf.stddev()),
-                               reinterpreted_batch_ndims=1)
+#         qf = super(GPDRE, self).__call__(X_pred, jitter=None)
+#         return tfd.Independent(tfd.LogNormal(qf.mean(), qf.stddev()),
+#                                reinterpreted_batch_ndims=1)
 
 
 @click.command()

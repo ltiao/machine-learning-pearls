@@ -8,7 +8,6 @@ import pandas as pd
 
 from tensorflow.keras.layers import Layer
 from tensorflow.keras.initializers import Identity, Constant
-from tensorflow_probability.layers import DistributionLambda
 
 # shortcuts
 tfd = tfp.distributions
@@ -22,13 +21,13 @@ def identity_initializer(shape, dtype=None):
     return tf.eye(num_rows, num_columns, batch_shape=batch_shape, dtype=dtype)
 
 
-class KernelLayer(Layer):
+class KernelWrapper(Layer):
 
     # TODO: Support automatic relevance determination
     def __init__(self, kernel_cls=kernels.ExponentiatedQuadratic,
                  dtype=None, **kwargs):
 
-        super(KernelLayer, self).__init__(dtype=dtype, **kwargs)
+        super(KernelWrapper, self).__init__(dtype=dtype, **kwargs)
 
         self.kernel_cls = kernel_cls
 
@@ -47,21 +46,20 @@ class KernelLayer(Layer):
 
     @property
     def kernel(self):
-        return self.kernel_cls(
-            amplitude=tf.exp(self.log_amplitude),
-            length_scale=tf.exp(self.log_length_scale))
+        return self.kernel_cls(amplitude=tf.exp(self.log_amplitude),
+                               length_scale=tf.exp(self.log_length_scale))
 
 
-class VariationalGaussianProcess1D(DistributionLambda):
+class VariationalGaussianProcessScalar(tfp.layers.DistributionLambda):
 
-    def __init__(self, kernel_provider, num_inducing_points,
+    def __init__(self, kernel_wrapper, num_inducing_points,
                  inducing_index_points_initializer, mean_fn=None, jitter=1e-6,
                  convert_to_tensor_fn=tfd.Distribution.sample, **kwargs):
 
         def make_distribution(x):
 
-            return VariationalGaussianProcess1D.new(
-                x, kernel_provider=self.kernel_provider,
+            return VariationalGaussianProcessScalar.new(
+                x, kernel_wrapper=self.kernel_wrapper,
                 inducing_index_points=self.inducing_index_points,
                 variational_inducing_observations_loc=(
                     self.variational_inducing_observations_loc),
@@ -72,18 +70,18 @@ class VariationalGaussianProcess1D(DistributionLambda):
                     self.log_observation_noise_variance),
                 jitter=self.jitter)
 
-        super(VariationalGaussianProcess1D, self).__init__(
+        super(VariationalGaussianProcessScalar, self).__init__(
             make_distribution_fn=make_distribution,
             convert_to_tensor_fn=convert_to_tensor_fn,
-            dtype=kernel_provider.dtype)
+            dtype=kernel_wrapper.dtype)
 
-        self.kernel_provider = kernel_provider
+        self.kernel_wrapper = kernel_wrapper
         self.inducing_index_points_initializer = inducing_index_points_initializer
         self.num_inducing_points = num_inducing_points
         self.mean_fn = mean_fn
         self.jitter = jitter
 
-        self._dtype = self.kernel_provider.dtype
+        self._dtype = self.kernel_wrapper.dtype
 
     def build(self, input_shape):
 
@@ -107,11 +105,11 @@ class VariationalGaussianProcess1D(DistributionLambda):
             initializer=Identity(gain=1.0), dtype=self.dtype)
 
         self.log_observation_noise_variance = self.add_weight(
-            name="observation_noise_variance",
+            name="log_observation_noise_variance",
             initializer=Constant(-5.0), dtype=self.dtype)
 
     @staticmethod
-    def new(x, kernel_provider, inducing_index_points, mean_fn,
+    def new(x, kernel_wrapper, inducing_index_points, mean_fn,
             variational_inducing_observations_loc,
             variational_inducing_observations_scale,
             observation_noise_variance, jitter, name=None):
@@ -121,7 +119,7 @@ class VariationalGaussianProcess1D(DistributionLambda):
         # d = tfd.TransformedDistribution(ind, bijector=bijector)
 
         return tfd.VariationalGaussianProcess(
-            kernel=kernel_provider.kernel, index_points=x,
+            kernel=kernel_wrapper.kernel, index_points=x,
             inducing_index_points=inducing_index_points,
             variational_inducing_observations_loc=(
                 variational_inducing_observations_loc),
