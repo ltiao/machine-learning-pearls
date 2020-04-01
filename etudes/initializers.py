@@ -1,4 +1,5 @@
 import numpy as np
+import tensorflow as tf
 
 from tensorflow.keras.initializers import Initializer
 from sklearn.cluster import MiniBatchKMeans
@@ -18,10 +19,13 @@ class SubsetInitializer(Initializer):
         subset_size, *input_shape = shape
         assert self.input_shape == input_shape, "shape mismatch"
 
-        # Make abstract base class or method that raises NotImplementedError
+        # TODO: Make abstract base class or method that raises
+        #   NotImplementedError
+        # TODO: This just assumes `compute_subset` returns a numpy array.
+        #   Would break if `dtype=tf.float64` for example.
         subset = self.compute_subset(subset_size, dtype)
 
-        return subset
+        return tf.constant(subset, dtype=dtype)
 
 
 class RandomSubset(SubsetInitializer):

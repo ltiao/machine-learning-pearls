@@ -24,7 +24,7 @@ def identity_initializer(shape, dtype=None):
 class KernelWrapper(Layer):
 
     # TODO: Support automatic relevance determination
-    def __init__(self, kernel_cls=kernels.ExponentiatedQuadratic,
+    def __init__(self, input_dim=1, kernel_cls=kernels.ExponentiatedQuadratic,
                  dtype=None, **kwargs):
 
         super(KernelWrapper, self).__init__(dtype=dtype, **kwargs)
@@ -39,6 +39,10 @@ class KernelWrapper(Layer):
             name="log_length_scale",
             initializer="zeros", dtype=dtype)
 
+        self.log_scale_diag = self.add_weight(
+            name="log_scale_diag", shape=(input_dim,),
+            initializer="zeros", dtype=dtype)
+
     def call(self, x):
         # Never called -- this is just a layer so it can hold variables
         # in a way Keras understands.
@@ -46,8 +50,13 @@ class KernelWrapper(Layer):
 
     @property
     def kernel(self):
-        return self.kernel_cls(amplitude=tf.exp(self.log_amplitude),
-                               length_scale=tf.exp(self.log_length_scale))
+
+        base_kernel = self.kernel_cls(
+            amplitude=tf.exp(self.log_amplitude),
+            length_scale=tf.exp(self.log_length_scale))
+
+        return kernels.FeatureScaled(base_kernel,
+                                     scale_diag=tf.exp(self.log_scale_diag))
 
 
 class VariationalGaussianProcessScalar(tfp.layers.DistributionLambda):

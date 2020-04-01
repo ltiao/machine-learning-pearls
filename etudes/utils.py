@@ -3,6 +3,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 import pandas as pd
+import h5py
 
 from tensorflow.keras.metrics import binary_accuracy
 from .datasets import make_classification_dataset \
@@ -15,6 +16,26 @@ from pathlib import Path
 tfd = tfp.distributions
 
 
+def save_hdf5(X_train, y_train, X_test, y_test, filename):
+
+    with h5py.File(filename, 'w') as f:
+        f.create_dataset("X_train", data=X_train)
+        f.create_dataset("y_train", data=y_train)
+        f.create_dataset("X_test", data=X_test)
+        f.create_dataset("y_test", data=y_test)
+
+
+def load_hdf5(filename):
+
+    with h5py.File(filename, 'r') as f:
+        X_train = np.array(f.get("X_train"))
+        y_train = np.array(f.get("y_train"))
+        X_test = np.array(f.get("X_test"))
+        y_test = np.array(f.get("y_test"))
+
+    return (X_train, y_train), (X_test, y_test)
+
+
 class DistributionPair:
 
     def __init__(self, p, q):
@@ -23,8 +44,21 @@ class DistributionPair:
         self.q = q
 
     @classmethod
-    def reverse(cls, distribution_pair):
-        return cls(p=distribution_pair.q, q=distribution_pair.p)
+    def from_covariate_shift_example(cls):
+
+        train = tfd.MixtureSameFamily(
+            mixture_distribution=tfd.Categorical(probs=[0.5, 0.5]),
+            components_distribution=tfd.MultivariateNormalDiag(
+                loc=[[-2.0, 3.0], [2.0, 3.0]], scale_diag=[1.0, 2.0])
+        )
+
+        test = tfd.MixtureSameFamily(
+            mixture_distribution=tfd.Categorical(probs=[0.5, 0.5]),
+            components_distribution=tfd.MultivariateNormalDiag(
+                loc=[[0.0, -1.0], [4.0, -1.0]])
+        )
+
+        return cls(p=test, q=train)
 
     def make_dataset(self, num_samples, rate=0.5, dtype="float64", seed=None):
 
@@ -35,6 +69,21 @@ class DistributionPair:
         X_q = self.q.sample(sample_shape=(num_q, 1), seed=seed).numpy()
 
         return X_p, X_q
+
+    def make_covariate_shift_dataset(self, class_posterior_fn, num_test,
+                                     num_train, threshold=0.5, seed=None):
+
+        num_samples = num_test + num_train
+        rate = num_test / num_samples
+
+        X_test, X_train = self.make_dataset(num_samples, rate=rate, seed=seed)
+        # TODO: Temporary fix. Need to address issue in `DistributionPair`.
+        X_train = X_train.squeeze()
+        X_test = X_test.squeeze()
+        y_train = (class_posterior_fn(*X_train.T) > threshold).numpy()
+        y_test = (class_posterior_fn(*X_test.T) > threshold).numpy()
+
+        return (X_train, y_train), (X_test, y_test)
 
     def make_classification_dataset(self, num_samples, rate=0.5,
                                     dtype="float64", seed=None):
