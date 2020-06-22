@@ -23,7 +23,7 @@ kernels = tfp.math.psd_kernels
 # constants
 num_features = 1  # dimensionality
 num_index_points = 256  # nbr of index points
-num_samples = 7
+num_samples = 8
 
 kernel = kernels.ExponentiatedQuadratic()
 X_pred = np.linspace(-5.0, 5.0, num_index_points).reshape(-1, num_features)

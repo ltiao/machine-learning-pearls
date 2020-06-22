@@ -245,10 +245,12 @@ def build_model(input_dim, jitter=1e-6):
             inducing_index_points_initializer=inducing_index_points_initializer,
             jitter=jitter)
     ])
+# %%
 
 
 model = build_model(input_dim=num_features, jitter=jitter)
 optimizer = tf.keras.optimizers.Adam()
+# %%
 
 
 @tf.function
@@ -265,6 +267,7 @@ def nelbo(X_batch, y_batch):
     kl_weight = get_kl_weight(num_train, batch_size)
 
     return - ell + kl_weight * kl
+# %%
 
 
 @tf.function
@@ -272,21 +275,25 @@ def train_step(X_batch, y_batch):
 
     with tf.GradientTape() as tape:
         loss = nelbo(X_batch, y_batch)
-        gradients = tape.gradient(loss, model.trainable_variables)
-        optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+
+    gradients = tape.gradient(loss, model.trainable_variables)
+    optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
     return loss
+# %%
 
 
 dataset = tf.data.Dataset.from_tensor_slices((X, y)) \
                          .shuffle(seed=seed, buffer_size=shuffle_buffer_size) \
                          .batch(batch_size, drop_remainder=True)
+# %%
 
 keys = ["inducing_index_points",
         "variational_inducing_observations_loc",
         "variational_inducing_observations_scale",
         "log_observation_noise_variance",
         "log_amplitude", "log_length_scale"]
+# %%
 
 history = defaultdict(list)
 

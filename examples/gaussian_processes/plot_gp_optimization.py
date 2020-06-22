@@ -110,13 +110,14 @@ for epoch in range(num_epochs):
 
     with tf.GradientTape() as tape:
         nll = - gp.log_prob(Y_train)
-        gradients = tape.gradient(nll, gp.trainable_variables)
-        optimizer.apply_gradients(zip(gradients, gp.trainable_variables))
 
-        history["nll"].append(to_numpy(nll))
-        history["amplitude"].append(to_numpy(amplitude))
-        history["length_scale"].append(to_numpy(length_scale))
-        history["observation_noise_variance"].append(to_numpy(observation_noise_variance))
+    gradients = tape.gradient(nll, gp.trainable_variables)
+    optimizer.apply_gradients(zip(gradients, gp.trainable_variables))
+
+    history["nll"].append(to_numpy(nll))
+    history["amplitude"].append(to_numpy(amplitude))
+    history["length_scale"].append(to_numpy(length_scale))
+    history["observation_noise_variance"].append(to_numpy(observation_noise_variance))
 
 # %%
 

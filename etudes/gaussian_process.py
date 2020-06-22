@@ -1,10 +1,9 @@
 """Main module."""
 import numpy as np
+import pandas as pd
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-
-import pandas as pd
 
 from tensorflow.keras.layers import Layer
 from tensorflow.keras.initializers import Identity, Constant

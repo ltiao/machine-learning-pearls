@@ -2,6 +2,46 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
+from noise import pnoise2
+
+
+def perlin(x, y, octaves=1, persistence=0.5, lacunarity=2.0, repeatx=1024,
+           repeaty=1024, base=0.0):
+    """
+    Vectorized light wrapper.
+
+    Examples
+    --------
+
+    .. plot::
+        :context: close-figs
+
+        # from etudes.math import perlin
+        from noise import pnoise2
+
+        step_size = 2.0
+        y, x = np.ogrid[0:2:32j, 0:1:32j]
+        X, Y = np.broadcast_arrays(x, y)
+
+        Z = np.vectorize(pnoise2)(x, y, octaves=2)
+        theta = 2.0 * np.pi * Z
+
+        dx = step_size * np.cos(theta)
+        dy = step_size * np.sin(theta)
+
+        fig, ax = plt.subplots(figsize=(10, 8))
+
+        contours = ax.pcolormesh(X, Y, theta)
+        ax.quiver(x, y, x + dx, y + dy, alpha=0.8)
+
+        fig.colorbar(contours, ax=ax)
+
+        plt.show()
+    """
+    return np.vectorize(pnoise2)(x, y, octaves=octaves, persistence=persistence,
+                                 lacunarity=lacunarity, repeatx=repeatx,
+                                 repeaty=repeaty, base=base)
+
 
 def expectation_gauss_hermite(fn, normal, quadrature_size):
 

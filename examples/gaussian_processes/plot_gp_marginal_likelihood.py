@@ -5,11 +5,9 @@ Gaussian Process Marginal Likelihood
 
 Hello world
 """
-# sphinx_gallery_thumbnail_number = 5
+# sphinx_gallery_thumbnail_number = 2
 
 import numpy as np
-
-import tensorflow as tf
 import tensorflow_probability as tfp
 
 import matplotlib.pyplot as plt
@@ -18,8 +16,7 @@ import seaborn as sns
 from mpl_toolkits.mplot3d import Axes3D
 from etudes.datasets import synthetic_sinusoidal, make_regression_dataset
 from etudes.plotting import fill_between_stddev
-from etudes.gaussian_processes import dataframe_from_gp_summary
-
+from etudes.gaussian_process import dataframe_from_gp_summary
 # %%
 
 # shortcuts
