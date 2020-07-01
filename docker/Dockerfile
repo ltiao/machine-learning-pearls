@@ -1,4 +1,4 @@
-FROM tensorflow/tensorflow:2.1.0-gpu-py3-jupyter
+FROM tensorflow/tensorflow:2.2.0-gpu-jupyter
 MAINTAINER Louis Tiao <louistiao@gmail.com>
 
 ENV LC_ALL C.UTF-8
@@ -30,7 +30,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements*.txt ./
 RUN python -m pip install --upgrade pip==20.1.1 keyrings.alt==3.4.0 && \
     python -m pip install --no-cache-dir -r requirements_dev.txt && \
-	python -m pip install --no-cache-dir -r requirements.txt 
+	python -m pip install --no-cache-dir -r requirements.txt && \
+    python -m pip install --upgrade https://storage.googleapis.com/jax-releases/cuda101/jaxlib-0.1.50-cp36-none-manylinux2010_x86_64.whl && \
+    python -m pip install --upgrade jax
 
 # Install TensorFlow Probability (building and installing the wheel ourselves)
 # TODO: take care of temporary dir properly (not this /tmp/whtvr placeholder)
