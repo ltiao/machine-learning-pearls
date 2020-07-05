@@ -5,7 +5,7 @@ Perlin noise
 
 Hello world
 """
-# sphinx_gallery_thumbnail_number = 4
+# sphinx_gallery_thumbnail_number = 5
 
 import numpy as np
 import pandas as pd

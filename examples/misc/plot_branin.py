@@ -5,7 +5,7 @@ Branin-Hoo function
 
 Hello world
 """
-# sphinx_gallery_thumbnail_number = 1
+# sphinx_gallery_thumbnail_number = 3
 
 import pandas as pd
 import numpy as onp
