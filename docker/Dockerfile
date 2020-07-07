@@ -46,6 +46,7 @@ RUN bazel build --copt=-O3 --copt=-march=native :pip_pkg && \
 # Install GPFlow (taking care of its dependencies ourselves)
 RUN python -m pip install --no-cache-dir multipledispatch tabulate dataclasses && \
     python -m pip install --no-cache-dir --no-deps gpflow==2.0.1
+RUN python -m pip install --upgrade GPy==1.9.9 gpyopt==1.2.6
 
 RUN mkdir -p /usr/src/app
 
