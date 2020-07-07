@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Cora Citation Network
-=====================
+FCNet Tabular Benchmarks
+========================
 
 Hello world
 """
