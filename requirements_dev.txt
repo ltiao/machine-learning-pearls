@@ -13,5 +13,5 @@ pytest-runner==5.2
 numpydoc
 nbsphinx
 sphinx_bootstrap_theme
-sphinx-gallery
+sphinx-gallery>=0.7.0
 pillow
