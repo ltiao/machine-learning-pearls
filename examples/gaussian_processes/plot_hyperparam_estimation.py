@@ -7,7 +7,7 @@ Here we fit the hyperparameters of a Gaussian Process by maximizing the (log)
 marginal likelihood. This is commonly referred to as empirical Bayes, or
 type-II maximum likelihood estimation.
 """
-# sphinx_gallery_thumbnail_number = 3
+# sphinx_gallery_thumbnail_number = 5
 
 import numpy as np
 
@@ -15,13 +15,13 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import seaborn as sns
 import pandas as pd
 
 from collections import defaultdict
-from etudes.datasets import synthetic_sinusoidal, make_regression_dataset
-from etudes.plotting import fill_between_stddev
-
+from etudes.datasets.synthetic import (synthetic_sinusoidal,
+                                       make_regression_dataset)
 # %%
 
 # shortcuts
@@ -38,9 +38,12 @@ def to_numpy(transformed_variable):
 num_train = 25  # nbr training points in synthetic dataset
 num_features = 1  # dimensionality
 num_index_points = 256  # nbr of index points
-num_samples = 7
+num_samples = 8
 
-num_epochs = 200
+num_epochs = 100
+learning_rate = 0.05
+beta_1 = 0.5
+beta_2 = 0.99
 
 observation_noise_variance_true = 1e-1
 jitter = 1e-6
@@ -50,9 +53,7 @@ kernel_cls = kernels.ExponentiatedQuadratic
 seed = 42  # set random seed for reproducibility
 random_state = np.random.RandomState(seed)
 
-golden_ratio = 0.5 * (1 + np.sqrt(5))
-
-X_pred = np.linspace(-1.0, 1.0, num_index_points).reshape(-1, num_features)
+X_grid = np.linspace(-1.0, 1.0, num_index_points).reshape(-1, num_features)
 
 load_data = make_regression_dataset(synthetic_sinusoidal)
 X_train, Y_train = load_data(num_train, num_features,
@@ -66,7 +67,7 @@ X_train, Y_train = load_data(num_train, num_features,
 
 fig, ax = plt.subplots()
 
-ax.plot(X_pred, synthetic_sinusoidal(X_pred), label="true")
+ax.plot(X_grid, synthetic_sinusoidal(X_grid), label="true")
 ax.scatter(X_train, Y_train, marker='x', color='k',
            label="noisy observations")
 
@@ -79,7 +80,8 @@ ax.set_ylabel('$y$')
 plt.show()
 
 # %%
-
+# Define and initialize the kernel parameters and model observation noise 
+# variables.
 amplitude = tfp.util.TransformedVariable(
     1.0, bijector=tfp.bijectors.Exp(), dtype="float64", name='amplitude')
 length_scale = tfp.util.TransformedVariable(
@@ -89,21 +91,20 @@ observation_noise_variance = tfp.util.TransformedVariable(
     name='observation_noise_variance')
 
 # %%
-
+# Define Gaussian Process model
 kernel = kernel_cls(amplitude=amplitude, length_scale=length_scale)
 gp = tfd.GaussianProcess(
-    kernel=kernel,
-    index_points=X_train,
+    kernel=kernel, index_points=X_train,
     observation_noise_variance=observation_noise_variance)
 
 # %%
-
-optimizer = tf.keras.optimizers.Adam(learning_rate=0.05, beta_1=0.5,
-                                     beta_2=0.99)
+# Gradient-based optimizer
+optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate,
+                                     beta_1=beta_1,
+                                     beta_2=beta_2)
 
 # %%
-
-
+# Training loop
 history = defaultdict(list)
 
 for epoch in range(num_epochs):
@@ -153,7 +154,7 @@ plt.show()
 kernel_history = kernel_cls(amplitude=history["amplitude"],
                             length_scale=history["length_scale"])
 gprm_history = tfd.GaussianProcessRegressionModel(
-    kernel=kernel_history, index_points=X_pred,
+    kernel=kernel_history, index_points=X_grid,
     observation_index_points=X_train, observations=Y_train,
     observation_noise_variance=history["observation_noise_variance"],
     jitter=jitter)
@@ -163,7 +164,7 @@ gprm_stddev = gprm_history.stddev()
 # %%
 
 # "Melt" the dataframe
-d = pd.DataFrame(gprm_mean.numpy(), columns=X_pred.squeeze())
+d = pd.DataFrame(gprm_mean.numpy(), columns=X_grid.squeeze())
 d.index.name = "epoch"
 d.columns.name = "x"
 s = d.stack()
@@ -179,15 +180,15 @@ sns.lineplot(x='x', y='y', hue="epoch", palette="viridis_r", data=data,
              linewidth=0.2, ax=ax)
 ax.scatter(X_train, Y_train, marker='x', color='k', label="noisy observations")
 
-ax.set_xlabel('$x$')
-ax.set_ylabel('$\mu(x)$')
+ax.set_xlabel(r'$x$')
+ax.set_ylabel(r'$\mu(x)$')
 
 plt.show()
 
 # %%
 
 # "Melt" the dataframe
-d = pd.DataFrame(gprm_stddev.numpy(), columns=X_pred.squeeze())
+d = pd.DataFrame(gprm_stddev.numpy(), columns=X_grid.squeeze())
 d.index.name = "epoch"
 d.columns.name = "x"
 s = d.stack()
@@ -202,7 +203,35 @@ fig, ax = plt.subplots()
 sns.lineplot(x='x', y='y', hue="epoch", palette="viridis_r", data=data,
              linewidth=0.2, ax=ax)
 
-ax.set_xlabel('$x$')
-ax.set_ylabel('$\sigma(x)$')
+ax.set_xlabel(r'$x$')
+ax.set_ylabel(r'$\sigma(x)$')
 
 plt.show()
+# %%
+# Animation
+fig, ax = plt.subplots()
+
+line_mean, = ax.plot(X_grid, gprm_mean[0], c="steelblue")
+line_stddev_lower, = ax.plot(X_grid, gprm_mean[0] - gprm_stddev[0],
+                             c="steelblue", alpha=0.4)
+line_stddev_upper, = ax.plot(X_grid, gprm_mean[0] + gprm_stddev[0],
+                             c="steelblue", alpha=0.4)
+
+ax.scatter(X_train, Y_train, marker='x', color='k', label="noisy observations")
+
+ax.set_xlabel('$x$')
+ax.set_ylabel('$y$')
+ax.set_ylim(-3, 3)
+
+
+def animate(i):
+
+    line_mean.set_data(X_grid, gprm_mean[i])
+    line_stddev_lower.set_data(X_grid, gprm_mean[i] - gprm_stddev[i])
+    line_stddev_upper.set_data(X_grid, gprm_mean[i] + gprm_stddev[i])
+
+    return line_mean, line_stddev_lower, line_stddev_upper
+
+
+anim = animation.FuncAnimation(fig, animate, frames=num_epochs,
+                               interval=60, repeat_delay=5, blit=True)
