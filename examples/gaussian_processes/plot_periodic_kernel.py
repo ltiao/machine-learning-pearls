@@ -25,9 +25,9 @@ kernels = tfp.math.psd_kernels
 num_features = 1  # dimensionality
 num_index_points = 256  # nbr of index points
 num_samples = 8
+
 x_min, x_max = -np.pi, np.pi
 period = np.float64(2. * np.pi)
-
 X_grid = np.linspace(x_min, x_max, num_index_points).reshape(-1, num_features)
 
 seed = 23  # set random seed for reproducibility
@@ -53,12 +53,11 @@ plt.show()
 # %%
 # Kernel matrix
 # -------------
-x1, x2 = np.broadcast_arrays(X_grid, X_grid.T)
-# %%
-
 fig, ax = plt.subplots()
 
-ax.pcolormesh(x1, x2, kernel.matrix(X_grid, X_grid), cmap="cividis")
+ax.pcolormesh(*np.broadcast_arrays(X_grid, X_grid.T),
+              kernel.matrix(X_grid, X_grid), cmap="cividis")
+ax.invert_yaxis()
 
 ax.set_xlabel(r'$x$')
 ax.set_ylabel(r'$x$')

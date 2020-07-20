@@ -3,9 +3,9 @@
 GP Hyperparameter Estimation
 ============================
 
-Here we fit the hyperparameters of a Gaussian Process by maximizing the (log)
-marginal likelihood. This is commonly referred to as empirical Bayes, or
-type-II maximum likelihood estimation.
+We fit the hyperparameters of a Gaussian process by maximizing the marginal
+likelihood. This is commonly referred to as empirical Bayes, or type-II maximum
+likelihood estimation.
 """
 # sphinx_gallery_thumbnail_number = 5
 
@@ -32,6 +32,7 @@ kernels = tfp.math.psd_kernels
 def to_numpy(transformed_variable):
 
     return tf.convert_to_tensor(transformed_variable).numpy()
+# %%
 
 
 # constants
@@ -53,13 +54,14 @@ kernel_cls = kernels.ExponentiatedQuadratic
 seed = 42  # set random seed for reproducibility
 random_state = np.random.RandomState(seed)
 
-X_grid = np.linspace(-1.0, 1.0, num_index_points).reshape(-1, num_features)
+x_min, x_max = -1.0, 1.0
+X_grid = np.linspace(x_min, x_max, num_index_points).reshape(-1, num_features)
 
 load_data = make_regression_dataset(synthetic_sinusoidal)
-X_train, Y_train = load_data(num_train, num_features,
-                             observation_noise_variance_true,
-                             x_min=-0.5, x_max=0.5,
-                             random_state=random_state)
+X, Y = load_data(num_train, num_features,
+                 observation_noise_variance_true,
+                 x_min=x_min + 0.5, x_max=x_max - 0.5,
+                 random_state=random_state)
 
 # %%
 # Synthetic dataset
@@ -68,19 +70,19 @@ X_train, Y_train = load_data(num_train, num_features,
 fig, ax = plt.subplots()
 
 ax.plot(X_grid, synthetic_sinusoidal(X_grid), label="true")
-ax.scatter(X_train, Y_train, marker='x', color='k',
+ax.scatter(X, Y, marker='x', color='k',
            label="noisy observations")
 
 ax.legend()
 
-ax.set_xlim(-0.6, 0.6)
+ax.set_xlim(x_min + 0.4, x_max - 0.4)
 ax.set_xlabel('$x$')
 ax.set_ylabel('$y$')
 
 plt.show()
 
 # %%
-# Define and initialize the kernel parameters and model observation noise 
+# Define and initialize the kernel parameters and model observation noise
 # variables.
 amplitude = tfp.util.TransformedVariable(
     1.0, bijector=tfp.bijectors.Exp(), dtype="float64", name='amplitude')
@@ -94,7 +96,7 @@ observation_noise_variance = tfp.util.TransformedVariable(
 # Define Gaussian Process model
 kernel = kernel_cls(amplitude=amplitude, length_scale=length_scale)
 gp = tfd.GaussianProcess(
-    kernel=kernel, index_points=X_train,
+    kernel=kernel, index_points=X,
     observation_noise_variance=observation_noise_variance)
 
 # %%
@@ -110,7 +112,7 @@ history = defaultdict(list)
 for epoch in range(num_epochs):
 
     with tf.GradientTape() as tape:
-        nll = - gp.log_prob(Y_train)
+        nll = - gp.log_prob(Y)
 
     gradients = tape.gradient(nll, gp.trainable_variables)
     optimizer.apply_gradients(zip(gradients, gp.trainable_variables))
@@ -127,9 +129,9 @@ kernel_grid = kernel_cls(amplitude=amplitude_grid,
                          length_scale=length_scale_grid)
 gp_grid = tfd.GaussianProcess(
     kernel=kernel_grid,
-    index_points=X_train,
+    index_points=X,
     observation_noise_variance=observation_noise_variance_true)
-nll_grid = - gp_grid.log_prob(Y_train)
+nll_grid = - gp_grid.log_prob(Y)
 
 # %%
 
@@ -155,7 +157,7 @@ kernel_history = kernel_cls(amplitude=history["amplitude"],
                             length_scale=history["length_scale"])
 gprm_history = tfd.GaussianProcessRegressionModel(
     kernel=kernel_history, index_points=X_grid,
-    observation_index_points=X_train, observations=Y_train,
+    observation_index_points=X, observations=Y,
     observation_noise_variance=history["observation_noise_variance"],
     jitter=jitter)
 gprm_mean = gprm_history.mean()
@@ -178,7 +180,7 @@ fig, ax = plt.subplots()
 
 sns.lineplot(x='x', y='y', hue="epoch", palette="viridis_r", data=data,
              linewidth=0.2, ax=ax)
-ax.scatter(X_train, Y_train, marker='x', color='k', label="noisy observations")
+ax.scatter(X, Y, marker='x', color='k', label="noisy observations")
 
 ax.set_xlabel(r'$x$')
 ax.set_ylabel(r'$\mu(x)$')
@@ -217,11 +219,10 @@ line_stddev_lower, = ax.plot(X_grid, gprm_mean[0] - gprm_stddev[0],
 line_stddev_upper, = ax.plot(X_grid, gprm_mean[0] + gprm_stddev[0],
                              c="steelblue", alpha=0.4)
 
-ax.scatter(X_train, Y_train, marker='x', color='k', label="noisy observations")
+ax.scatter(X, Y, marker='x', color='k', label="noisy observations")
 
 ax.set_xlabel('$x$')
 ax.set_ylabel('$y$')
-ax.set_ylim(-3, 3)
 
 
 def animate(i):

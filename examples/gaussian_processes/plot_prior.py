@@ -25,11 +25,13 @@ num_features = 1  # dimensionality
 num_index_points = 256  # nbr of index points
 num_samples = 8
 
-kernel = kernels.ExponentiatedQuadratic()
-X_pred = np.linspace(-5.0, 5.0, num_index_points).reshape(-1, num_features)
+x_min, x_max = -5.0, 5.0
+X_grid = np.linspace(x_min, x_max, num_index_points).reshape(-1, num_features)
 
 seed = 23  # set random seed for reproducibility
 random_state = np.random.RandomState(seed)
+
+kernel = kernels.ExponentiatedQuadratic()
 
 # %%
 # Kernel profile
@@ -39,7 +41,7 @@ random_state = np.random.RandomState(seed)
 
 fig, ax = plt.subplots()
 
-ax.plot(X_pred, kernel.apply(X_pred, np.zeros((1, num_features))))
+ax.plot(X_grid, kernel.apply(X_grid, np.zeros((1, num_features))))
 
 ax.set_xlabel(r'$x$')
 ax.set_ylabel(r'$k(x, 0)$')
@@ -49,11 +51,11 @@ plt.show()
 # %%
 # Kernel matrix
 # -------------
-
 fig, ax = plt.subplots()
 
-ax.imshow(kernel.matrix(X_pred, X_pred), extent=[-5.0, 5.0, 5.0, -5.0],
-          cmap="cividis")
+ax.pcolormesh(*np.broadcast_arrays(X_grid, X_grid.T),
+              kernel.matrix(X_grid, X_grid), cmap="cividis")
+ax.invert_yaxis()
 
 ax.set_xlabel(r'$x$')
 ax.set_ylabel(r'$x$')
@@ -64,12 +66,13 @@ plt.show()
 # Prior samples
 # -------------
 
-gp = tfd.GaussianProcess(kernel, X_pred)
+gp = tfd.GaussianProcess(kernel=kernel, index_points=X_grid)
 samples = gp.sample(num_samples, seed=seed)
+# %%
 
 fig, ax = plt.subplots()
 
-ax.plot(X_pred, samples.numpy().T)
+ax.plot(X_grid, samples.numpy().T)
 
 ax.set_xlabel(r'$x$')
 ax.set_ylabel(r'$f(x)$')
