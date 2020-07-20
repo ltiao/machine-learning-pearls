@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Optimize Neural Network Input
-=============================
+Optimization of Neural Network Input
+====================================
 
-We study how to optimize the output of a neural network with respect to the
+We study how to optimize the output of a neural network with respect to its
 input.
 
 """
@@ -37,7 +37,7 @@ xmin, xmax = -1.0, 2.0
 X_grid = np.linspace(xmin, xmax, num_index_points).reshape(-1, num_features)
 
 noise_variance = 0.1
-learning_rate = 0.01
+learning_rate = 0.03
 
 sparsity_factor = 0.1
 step = int(1/sparsity_factor)
@@ -49,7 +49,6 @@ random_state = np.random.RandomState(seed)
 
 
 def latent(x):
-    # return (6.0*x-2.0)**2 * np.sin(12.0*x - 4.0)
     return np.sin(3.0*x) + x**2 - 0.7*x
 # %%
 
@@ -106,7 +105,7 @@ fig, ax = plt.subplots()
 
 ax.plot(X_grid, model(X_grid), label="value")
 ax.quiver(X_grid_sparse, val, - learning_rate * grad, new_val - val,
-          scale_units='xy', angles='xy', scale=1.0, label="gradient")
+          scale_units='xy', angles='xy', scale=1.0, width=3e-3, label="gradient")
 
 ax.set_xlabel(r'$x$')
 ax.set_ylabel(r'$y$')
@@ -155,7 +154,7 @@ ax.scatter(result.position, tf.expand_dims(result.objective_value, axis=0), s=8*
            c="tab:orange", marker='*', alpha=0.8, zorder=10, label="minimum")
 ax.plot(X_grid, model(X_grid), label="value")
 ax.quiver(X_grid_sparse, val, - learning_rate * grad, new_val - val,
-          scale_units='xy', angles='xy', scale=1.0, label="gradient")
+          scale_units='xy', angles='xy', scale=1.0, width=3e-3, label="gradient")
 
 ax.set_xlabel(r'$x$')
 ax.set_ylabel(r'$y$')
