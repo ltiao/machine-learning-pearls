@@ -31,7 +31,7 @@ K.set_floatx("float64")
 
 num_samples = 20
 num_features = 1
-
+num_restarts = 5
 num_index_points = 512
 xmin, xmax = -1.0, 2.0
 X_grid = np.linspace(xmin, xmax, num_index_points).reshape(-1, num_features)
@@ -124,7 +124,7 @@ def func(x):
 # %%
 
 
-initial_position = random_state.uniform(low=xmin, high=xmax, size=(1,))
+initial_position = random_state.uniform(low=xmin, high=xmax, size=(num_features,))
 # %%
 numpy_io(func)(initial_position)
 # %%
@@ -179,6 +179,32 @@ ax.quiver(X_hist[:-1], Y_hist[:-1],
           X_hist[1:] - X_hist[:-1],
           Y_hist[1:] - Y_hist[:-1],
           scale_units='xy', angles='xy', scale=1.0, width=3e-3)
+
+ax.set_xlabel(r'$x$')
+ax.set_ylabel(r'$y$')
+
+ax.legend()
+
+plt.show()
+# %%
+
+results = []
+
+for initial_position in random_state.uniform(low=xmin, high=xmax,
+                                             size=(num_restarts, num_features)):
+
+    res = minimize(numpy_io(func), x0=initial_position, jac=True,
+                   method="L-BFGS-B")
+    results.append(res)
+# %%
+Xs = np.vstack([res.x for res in results])
+ys = np.hstack([res.fun for res in results])
+# %%
+fig, ax = plt.subplots()
+
+ax.plot(X_grid, model(X_grid), label="value")
+ax.scatter(Xs, ys, c="tab:orange", marker='*', alpha=0.8,
+           zorder=10, label="minima")
 
 ax.set_xlabel(r'$x$')
 ax.set_ylabel(r'$y$')

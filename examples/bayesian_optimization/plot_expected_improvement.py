@@ -33,7 +33,7 @@ noise_variance = 0.5
 x_min, x_max = -1.0, 2.0
 quantile_grid = np.arange(0., 0.8, 0.15)
 
-X_grid = np.linspace(x_min, x_max, num_index_points).reshape(-1, num_features)
+X_grid = np.linspace(x_min-5., x_max+5., num_index_points).reshape(-1, num_features)
 
 num_epochs = 200
 learning_rate = 0.05
