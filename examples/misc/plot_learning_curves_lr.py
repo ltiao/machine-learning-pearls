@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Learning curves
-===============
+Learning curves (learning rate)
+===============================
 
 Hello world
 """
@@ -23,6 +23,8 @@ from sklearn.model_selection import train_test_split
 
 from matplotlib.colors import LogNorm
 from mpl_toolkits.mplot3d import Axes3D
+
+from etudes.metrics import nmse
 # %%
 
 num_index_points = 64
@@ -66,11 +68,9 @@ for i, lr in enumerate(lr_grid):
                         kernel_initializer=GlorotUniform(seed=seed)))
     model.add(Dense(1, kernel_initializer=GlorotUniform(seed=seed)))
 
-    model.compile(optimizer=optimizer,
-                  loss="mean_squared_error",
-                  metrics=["mean_squared_error"])
+    model.compile(optimizer=optimizer, loss="mean_squared_error", metrics=[nmse])
     hist = model.fit(X_train, y_train, validation_data=(X_val, y_val),
-                     epochs=num_epochs, batch_size=batch_size)
+                     epochs=num_epochs, batch_size=batch_size, verbose=False)
 
     frame = pd.DataFrame(hist.history).assign(log_lr=log_lr_grid[i], seed=seed)
     frame.index.name = "epoch"
@@ -82,7 +82,7 @@ data.rename(lambda s: s.replace('_', ' '), axis="columns", inplace=True)
 # %%
 fig, ax = plt.subplots()
 
-sns.lineplot(x="epoch", y="val mean squared error", hue="log lr",
+sns.lineplot(x="epoch", y="val nmse", hue="log lr",
              units="seed", estimator=None,
              palette="viridis_r", linewidth=0.4,
              data=data, ax=ax)
@@ -94,7 +94,7 @@ plt.show()
 # %%
 fig, ax = plt.subplots()
 
-sns.lineplot(x="log lr", y="val mean squared error", hue="epoch",
+sns.lineplot(x="log lr", y="val nmse", hue="epoch",
              units="seed", estimator=None,
              palette="viridis_r", linewidth=0.4,
              data=data, ax=ax)
@@ -103,7 +103,7 @@ ax.set_yscale("log")
 
 plt.show()
 # %%
-new_data = data.pivot(index="log lr", columns="epoch", values="val mean squared error")
+new_data = data.pivot(index="log lr", columns="epoch", values="val nmse")
 Z = new_data.to_numpy()
 # %%
 fig, ax = plt.subplots()
@@ -125,6 +125,6 @@ ax.plot_surface(log_lr_grid.reshape(-1, 1), t_grid, np.log(Z), alpha=0.8,
 
 ax.set_xlabel(r"$\log_{10}$ learning rate")
 ax.set_ylabel("epoch")
-ax.set_zlabel("val. error")
+ax.set_zlabel(r"$\log_{10}$ val nmse")
 
 plt.show()

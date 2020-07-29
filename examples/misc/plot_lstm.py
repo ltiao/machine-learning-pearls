@@ -71,6 +71,7 @@ seq_len = 100
 num_index_points = 128
 xmin, xmax = -10.0, 10.0
 X_grid = np.linspace(xmin, xmax, num_index_points).reshape(-1, num_features)
+# %%
 
 model = Sequential([
     RepeatVector(seq_len, input_shape=(num_features,)),
