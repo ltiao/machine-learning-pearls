@@ -9,6 +9,7 @@ type-II maximum likelihood estimation.
 """
 # sphinx_gallery_thumbnail_number = 3
 
+
 import numpy as np
 
 import tensorflow as tf
@@ -61,8 +62,6 @@ y_min, y_max = -0.05, 0.7
 
 # index points
 X_q = np.linspace(x_min, x_max, num_index_points).reshape(-1, num_features)
-
-golden_ratio = 0.5 * (1 + np.sqrt(5))
 
 # %%
 # Coal mining disasters dataset

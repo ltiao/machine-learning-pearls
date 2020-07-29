@@ -11,6 +11,7 @@ type-II maximum likelihood estimation.
 
 import numpy as np
 
+
 import tensorflow as tf
 import tensorflow_probability as tfp
 
@@ -401,7 +402,7 @@ for epoch in range(num_epochs):
 # %%
 # Create test-time model with higher `jitter` to be robust to unseen test
 # inputs.
-test_model = build_model(input_dim=num_features, jitter=2.0*jitter)
+test_model = build_model(input_dim=num_features, jitter=2e-5)
 test_model.set_weights(model.get_weights())
 
 # %%
