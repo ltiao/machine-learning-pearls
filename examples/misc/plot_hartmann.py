@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Synthetic functions
-===================
+Hartmann functions
+==================
 
 Hello world
 """
