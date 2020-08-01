@@ -121,3 +121,13 @@ ax.set_ylabel("epoch")
 ax.set_zlabel(r"$\log_{10}$ val nmse")
 
 plt.show()
+# %%
+new_data.rename(lambda s: s + 1, axis="columns", inplace=True)
+columns = list(np.minimum(3**np.arange(6), num_epochs))
+# %%
+g = sns.PairGrid(new_data[columns], corner=True)
+g = g.map_lower(plt.plot)
+# %%
+g = sns.PairGrid(new_data[columns].reset_index(),
+                 hue="width", palette="Spectral", corner=True)
+g = g.map_lower(plt.scatter, facecolor="none", alpha=0.8)

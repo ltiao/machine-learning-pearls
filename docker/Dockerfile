@@ -4,9 +4,6 @@ MAINTAINER Louis Tiao <louistiao@gmail.com>
 ENV LC_ALL C.UTF-8
 ENV LANG C.UTF-8
 
-RUN curl -f https://bazel.build/bazel-release.pub.gpg | apt-key add - && \
-    echo "deb [arch=amd64] https://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list
-
 RUN echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true | debconf-set-selections
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git-core \
@@ -21,14 +18,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         imagemagick \
         ffmpeg \
         graphviz \
-        bazel \
         && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* ~/.cache/matplotlib
 
 # TODO: copy to temporary dir rather than unknown current dir
 COPY requirements*.txt ./
-RUN python -m pip install --upgrade pip==20.2 keyrings.alt==3.4.0 && \
+RUN python -m pip install --no-cache-dir --upgrade pip==20.2 keyrings.alt==3.4.0 && \
     python -m pip install --no-cache-dir -r requirements_dev.txt && \
 	python -m pip install --no-cache-dir -r requirements.txt && \
     python -m pip install --upgrade https://storage.googleapis.com/jax-releases/cuda101/jaxlib-0.1.52-cp36-none-manylinux2010_x86_64.whl && \

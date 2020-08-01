@@ -44,7 +44,7 @@ random_state = np.random.RandomState(seed)
 t_grid = np.arange(num_epochs)
 
 # lr_grid = np.logspace(-5, -0.5, num_index_points)
-log_lr_grid = np.linspace(-5, -0.5, num_index_points)
+log_lr_grid = np.linspace(-5.0, -1.0, num_index_points)
 lr_grid = 10**log_lr_grid
 
 # %%
@@ -128,3 +128,13 @@ ax.set_ylabel("epoch")
 ax.set_zlabel(r"$\log_{10}$ val nmse")
 
 plt.show()
+# %%
+new_data.rename(lambda s: s + 1, axis="columns", inplace=True)
+columns = list(np.minimum(3**np.arange(6), num_epochs))
+# %%
+g = sns.PairGrid(new_data[columns], corner=True)
+g = g.map_lower(plt.plot)
+# %%
+g = sns.PairGrid(new_data[columns].reset_index(),
+                 hue="log lr", palette="Spectral", corner=True)
+g = g.map_lower(plt.scatter, facecolor="none", alpha=0.8)

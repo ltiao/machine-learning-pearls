@@ -14,7 +14,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from mpl_toolkits.mplot3d import Axes3D
-from etudes.datasets import synthetic_sinusoidal, make_regression_dataset
+from etudes.datasets import make_regression_dataset
+from etudes.datasets.synthetic import synthetic_sinusoidal
 from etudes.plotting import fill_between_stddev
 from etudes.gaussian_process import dataframe_from_gp_summary
 # %%
@@ -39,7 +40,7 @@ random_state = np.random.RandomState(seed)
 
 golden_ratio = 0.5 * (1 + np.sqrt(5))
 
-X_pred = np.linspace(-1.0, 1.0, num_index_points).reshape(-1, num_features)
+X_grid = np.linspace(-1.0, 1.0, num_index_points).reshape(-1, num_features)
 
 load_data = make_regression_dataset(synthetic_sinusoidal)
 X_train, Y_train = load_data(num_train, num_features,
@@ -53,7 +54,7 @@ X_train, Y_train = load_data(num_train, num_features,
 
 fig, ax = plt.subplots()
 
-ax.plot(X_pred, synthetic_sinusoidal(X_pred), label="true")
+ax.plot(X_grid, synthetic_sinusoidal(X_grid), label="true")
 ax.scatter(X_train, Y_train, marker='x', color='k',
            label="noisy observations")
 
@@ -132,7 +133,7 @@ def scatterplot(X, Y, ax=None, *args, **kwargs):
 
 
 gprm_grid = tfd.GaussianProcessRegressionModel(
-    kernel=kernel_grid, index_points=X_pred,
+    kernel=kernel_grid, index_points=X_grid,
     observation_index_points=X_train, observations=Y_train,
     observation_noise_variance=observation_noise_variance,
     jitter=jitter
@@ -140,7 +141,7 @@ gprm_grid = tfd.GaussianProcessRegressionModel(
 
 data = dataframe_from_gp_summary(gprm_grid.mean().numpy(),
                                  gprm_grid.stddev().numpy(),
-                                 amplitude_grid, length_scale_grid, X_pred) \
+                                 amplitude_grid, length_scale_grid, X_grid) \
     .rename(columns={"length_scale": "lengthscale", "index_point": "x"})
 
 g = sns.relplot(x="x", y="mean",

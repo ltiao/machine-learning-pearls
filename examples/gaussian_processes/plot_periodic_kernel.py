@@ -3,7 +3,7 @@
 Gaussian Process with Period Kernels
 ====================================
 
-Hello world
+A look at periodic kernels.
 """
 # sphinx_gallery_thumbnail_number = 5
 
