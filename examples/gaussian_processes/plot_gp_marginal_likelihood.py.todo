@@ -130,7 +130,7 @@ def scatterplot(X, Y, ax=None, *args, **kwargs):
         ax = plt.gca()
 
     ax.scatter(X, Y, *args, **kwargs)
-
+# %%
 
 gprm_grid = tfd.GaussianProcessRegressionModel(
     kernel=kernel_grid, index_points=X_grid,
@@ -139,10 +139,13 @@ gprm_grid = tfd.GaussianProcessRegressionModel(
     jitter=jitter
 )
 
+# %%
 data = dataframe_from_gp_summary(gprm_grid.mean().numpy(),
                                  gprm_grid.stddev().numpy(),
                                  amplitude_grid, length_scale_grid, X_grid) \
     .rename(columns={"length_scale": "lengthscale", "index_point": "x"})
+data
+# %%
 
 g = sns.relplot(x="x", y="mean",
                 row="amplitude", col="lengthscale",
