@@ -25,6 +25,7 @@ binwidth = 5.0
 # %%
 r = requests.get("https://api.binance.com/api/v3/depth", params=dict(symbol=symbol))
 results = r.json()
+results
 # %%
 
 frames = []

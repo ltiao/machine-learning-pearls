@@ -13,7 +13,7 @@ import tensorflow_probability as tfp
 
 import matplotlib.pyplot as plt
 
-from etudes.datasets import synthetic_sinusoidal, make_regression_dataset
+from etudes.datasets.synthetic import synthetic_sinusoidal, make_regression_dataset
 from etudes.plotting import fill_between_stddev
 
 # %%
