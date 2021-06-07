@@ -1,31 +1,24 @@
-=======================
-Machine Learning Études
-=======================
+=========
+Scribbles
+=========
 
 
-.. image:: https://img.shields.io/pypi/v/etudes.svg
-        :target: https://pypi.python.org/pypi/etudes
+.. image:: https://img.shields.io/pypi/v/scribbles.svg
+        :target: https://pypi.python.org/pypi/scribbles
 
-.. image:: https://img.shields.io/travis/ltiao/etudes.svg
-        :target: https://travis-ci.org/ltiao/etudes
+.. image:: https://img.shields.io/travis/ltiao/scribbles.svg
+        :target: https://travis-ci.org/ltiao/scribbles
 
-.. image:: https://readthedocs.org/projects/etudes/badge/?version=latest
-        :target: https://etudes.readthedocs.io/en/latest/?badge=latest
+.. image:: https://readthedocs.org/projects/scribbles/badge/?version=latest
+        :target: https://scribbles.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
 
 
-.. image:: https://pyup.io/repos/github/ltiao/etudes/shield.svg
-     :target: https://pyup.io/repos/github/ltiao/etudes/
+.. image:: https://pyup.io/repos/github/ltiao/scribbles/shield.svg
+     :target: https://pyup.io/repos/github/ltiao/scribbles/
      :alt: Updates
 
-Inspired by Peter Norvig's `pytudes <https://github.com/norvig/pytudes>`_, 
-which was in turn inspired by the book "Etudes for Programmers (1978)" by 
-Charles Wetherell.
-
-    An étude (a French word meaning study) is an instrumental musical composition, usually short, of considerable difficulty, and designed to provide practice material for perfecting a particular musical skill.
-
-* Free software: MIT license
-* Documentation: https://etudes.readthedocs.io.
+  We need a language that lets us scribble and smudge and smear, not a language where you have to sit with a teacup of types balanced on your knee and make polite conversation with a strict old aunt of a compiler.
 
 Features
 --------

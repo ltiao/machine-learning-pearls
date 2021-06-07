@@ -14,10 +14,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from mpl_toolkits.mplot3d import Axes3D
-from etudes.datasets import make_regression_dataset
-from etudes.datasets.synthetic import synthetic_sinusoidal
-from etudes.plotting import fill_between_stddev
-from etudes.gaussian_process import dataframe_from_gp_summary
+from scribbles.datasets import make_regression_dataset
+from scribbles.datasets.synthetic import synthetic_sinusoidal
+from scribbles.plotting import fill_between_stddev
+from scribbles.gaussian_process import dataframe_from_gp_summary
 # %%
 
 # shortcuts

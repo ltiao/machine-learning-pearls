@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from scipy.optimize import minimize
-from etudes.decorators import value_and_gradient, numpy_io
+from scribbles.decorators import value_and_gradient, numpy_io
 # %%
 
 num_iterations = 50000

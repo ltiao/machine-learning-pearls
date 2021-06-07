@@ -20,7 +20,7 @@ import seaborn as sns
 import pandas as pd
 
 from collections import defaultdict
-from etudes.datasets.synthetic import (synthetic_sinusoidal,
+from scribbles.datasets.synthetic import (synthetic_sinusoidal,
                                        make_regression_dataset)
 # %%
 

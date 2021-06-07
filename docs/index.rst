@@ -1,5 +1,5 @@
-Études for Machine Learning
-===========================
+Scribbles
+=========
 
 A collection of scripts and notebooks to practice and spotlight fundamental
 probabilistic machine learning methods through short and interesting examples.

@@ -24,9 +24,9 @@ from tensorflow.keras.initializers import Identity, Constant
 
 from sklearn.preprocessing import MinMaxScaler
 
-from etudes.datasets import coal_mining_disasters_load_data
-from etudes.plotting import fill_between_stddev
-from etudes.utils import get_kl_weight
+from scribbles.datasets import coal_mining_disasters_load_data
+from scribbles.plotting import fill_between_stddev
+from scribbles.utils import get_kl_weight
 
 from collections import defaultdict
 

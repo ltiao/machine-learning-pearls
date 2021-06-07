@@ -1,4 +1,4 @@
-"""Console script for etudes."""
+"""Console script for scribbles."""
 import os
 import sys
 import click
@@ -15,7 +15,8 @@ import seaborn as sns
 
 from matplotlib import animation
 from pathlib import Path
-from etudes.datasets import make_dataset, synthetic_sinusoidal
+
+from scribbles.datasets.synthetic import synthetic_sinusoidal, make_regression_dataset
 
 GOLDEN_RATIO = 0.5 * (1 + np.sqrt(5))
 golden_size = lambda width: (width, width / GOLDEN_RATIO)
@@ -104,10 +105,13 @@ def main(name, baseline_name, num_train, num_features, num_query_points,
          num_inducing_points, noise_variance, num_epochs, summary_dir, jitter,
          seed, baseline_seed):
 
+    random_state = np.random.RandomState(seed)
+
+    load_data = make_regression_dataset(synthetic_sinusoidal)
     # Dataset (training index points)
-    X_train, Y_train = make_dataset(synthetic_sinusoidal, num_train,
-                                    num_features, noise_variance,
-                                    x_min=-0.5, x_max=0.5)
+    X_train, Y_train = load_data(num_train, num_features, noise_variance,
+                                 x_min=-0.5, x_max=0.5,
+                                 random_state=random_state)
 
     x_min, x_max = -1.0, 1.0
     y_min, y_max = -3, 3

@@ -1,4 +1,4 @@
-"""Console script for etudes."""
+"""Console script for scribbles."""
 import os
 import sys
 import click
@@ -12,7 +12,7 @@ import tensorflow_probability as tfp
 from collections import defaultdict
 from pathlib import Path
 
-from etudes.datasets import make_dataset, synthetic_sinusoidal
+from scribbles.datasets.synthetic import synthetic_sinusoidal, make_regression_dataset
 
 tf.disable_v2_behavior()
 
@@ -41,7 +41,7 @@ SUMMARY_DIR = "logs/"
 SUMMARY_PERIOD = 5
 LOG_PERIOD = 1
 
-SEED = 8888
+SEED = 42
 
 
 def save_results(history, name, seed, learning_rate, beta1, beta2, num_epochs,
@@ -92,9 +92,13 @@ def main(name, num_train, num_features, noise_variance, num_epochs,
          learning_rate, beta1, beta2, checkpoint_dir, checkpoint_period,
          summary_dir, summary_period, log_period, jitter, seed):
 
-    # Dataset
-    X_train, Y_train = make_dataset(synthetic_sinusoidal, num_train,
-                                    num_features, noise_variance)
+    random_state = np.random.RandomState(seed)
+
+    load_data = make_regression_dataset(synthetic_sinusoidal)
+    # Dataset (training index points)
+    X_train, Y_train = load_data(num_train, num_features, noise_variance,
+                                 x_min=-0.5, x_max=0.5,
+                                 random_state=random_state)
 
     # Model hyperparamters
     # TODO: allow specification of initial values

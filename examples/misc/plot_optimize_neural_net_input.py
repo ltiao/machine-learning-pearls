@@ -22,9 +22,9 @@ from tensorflow.keras.initializers import GlorotUniform
 
 from scipy.optimize import minimize
 
-# from etudes.losses import binary_crossentropy_from_logits
-from etudes.datasets import make_regression_dataset
-from etudes.decorators import unbatch, value_and_gradient, numpy_io
+# from scribbles.losses import binary_crossentropy_from_logits
+from scribbles.datasets import make_regression_dataset
+from scribbles.decorators import unbatch, value_and_gradient, numpy_io
 # %%
 
 K.set_floatx("float64")

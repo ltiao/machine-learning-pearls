@@ -2,6 +2,6 @@
 Usage
 =====
 
-To use Machine Learning Études in a project::
+To use Scribbles in a project::
 
-    import etudes
+    import scribbles

@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
-"""Tests for `etudes` package."""
+"""Tests for `scribbles` package."""
 
 import pytest
 
 from click.testing import CliRunner
 
-from etudes import etudes
-from etudes import cli
+from scribbles import scribbles
+from scribbles import cli
 
 
 @pytest.fixture
@@ -31,7 +31,7 @@ def test_command_line_interface():
     runner = CliRunner()
     result = runner.invoke(cli.main)
     assert result.exit_code == 0
-    assert 'etudes.cli.main' in result.output
+    assert 'scribbles.cli.main' in result.output
     help_result = runner.invoke(cli.main, ['--help'])
     assert help_result.exit_code == 0
     assert '--help  Show this message and exit.' in help_result.output

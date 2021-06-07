@@ -1,4 +1,4 @@
-"""Console script for etudes."""
+"""Console script for scribbles."""
 import os
 import sys
 import click
@@ -12,7 +12,7 @@ import tensorflow_probability as tfp
 from collections import defaultdict
 from pathlib import Path
 
-from etudes.datasets import make_dataset, synthetic_sinusoidal
+from scribbles.datasets.synthetic import synthetic_sinusoidal, make_regression_dataset
 
 tf.disable_v2_behavior()
 
@@ -45,7 +45,7 @@ CHECKPOINT_PERIOD = 100
 SUMMARY_PERIOD = 5
 LOG_PERIOD = 1
 
-SEED = 8888
+SEED = 42
 
 SHUFFLE_BUFFER_SIZE = 256
 
@@ -132,10 +132,11 @@ def main(name, num_train, num_features, num_query_points, num_inducing_points,
 
     random_state = np.random.RandomState(seed)
 
+    load_data = make_regression_dataset(synthetic_sinusoidal)
     # Dataset (training index points)
-    X_train, Y_train = make_dataset(synthetic_sinusoidal, num_train,
-                                    num_features, noise_variance,
-                                    x_min=-0.5, x_max=0.5)
+    X_train, Y_train = load_data(num_train, num_features, noise_variance,
+                                 x_min=-0.5, x_max=0.5,
+                                 random_state=random_state)
 
     x_min, x_max = -1.0, 1.0
     # query index points
@@ -235,6 +236,8 @@ def main(name, num_train, num_features, num_query_points, num_inducing_points,
         sess.run(tf.global_variables_initializer())
 
         for epoch in range(num_epochs):
+
+            print(epoch)
 
             # (re)initialize dataset iterator
             sess.run(iterator.initializer)

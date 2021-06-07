@@ -1,4 +1,4 @@
-* Machine Learning Études version:
+* Scribbles version:
 * Python version:
 * Operating System:
 
